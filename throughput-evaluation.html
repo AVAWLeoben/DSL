@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Throughput Evaluation Exercise</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;
+  --muted:#9aa4b2;--border:#303744;--accent:#38bdf8;--orange:#f59e0b;
+  --red:#ef4444;--green:#22c55e;--paper:#ffffff;--ink:#111827;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1250px;margin:auto;padding:20px}
+h1{font-size:25px;margin:0 0 5px}
+.sub{color:var(--muted);margin:0 0 18px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px}
+.chartWrap{background:#fff;border-radius:10px;overflow:hidden;position:relative}
+canvas{display:block;width:100%;height:610px;touch-action:manipulation}
+.controls{display:grid;gap:10px}
+button{font:inherit;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--panel2);color:var(--text);cursor:pointer}
+button:hover{border-color:#64748b}
+button.primary{background:#0ea5e9;color:#06131b;border-color:#0ea5e9;font-weight:700}
+button.danger{border-color:#7f1d1d}
+label.check{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+input[type=checkbox]{width:17px;height:17px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px}
+.card h2{font-size:14px;margin:0 0 7px}
+.small{font-size:12px;color:var(--muted);line-height:1.45}
+.value{font-size:23px;font-weight:750}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 2px 0;color:var(--muted);font-size:12px}
+.key{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.tooltip{position:absolute;pointer-events:none;display:none;background:#111827;color:#fff;border-radius:7px;padding:6px 8px;font-size:12px;box-shadow:0 4px 14px #0005;white-space:nowrap}
+#selectionList{max-height:170px;overflow:auto;margin-top:7px}
+.entry{display:flex;justify-content:space-between;border-bottom:1px solid #ffffff12;padding:5px 0;font-size:12px}
+.feedback{line-height:1.45;font-size:13px}
+@media(max-width:850px){
+  .layout{grid-template-columns:1fr}
+  canvas{height:500px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Throughput Evaluation</h1>
+  <p class="sub">Weekly facility throughput · 70 measurements · 10 measurements per day</p>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="chartWrap">
+        <canvas id="chart" aria-label="Weekly throughput graph"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="key"><span class="dot" style="background:#2563eb"></span>Throughput</span>
+        <span class="key"><span class="dot" style="background:#f59e0b"></span>Your suspected error</span>
+        <span class="key"><span class="dot" style="background:#ef4444"></span>MATLAB local minimum</span>
+      </div>
+    </section>
+
+    <aside class="panel controls">
+      <div class="card">
+        <h2>Student task</h2>
+        <div class="small">
+          Inspect the throughput curve. Click any data point that you think could indicate
+          an error or disturbance in the facility. Click it again to remove your mark.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Your selection</h2>
+        <div class="value"><span id="selectedCount">0</span> points</div>
+        <div id="selectionList" class="small">No points selected.</div>
+      </div>
+
+      <button id="checkBtn" class="primary" type="button">Check against local minima</button>
+      <button id="revealBtn" type="button">Show MATLAB local minima</button>
+      <button id="resetBtn" class="danger" type="button">Reset student selection</button>
+
+      <label class="check">
+        <input id="valuesToggle" type="checkbox">
+        Show all throughput values
+      </label>
+
+      <div id="feedbackCard" class="card" style="display:none">
+        <h2>Evaluation</h2>
+        <div id="feedback" class="feedback"></div>
+      </div>
+
+      <div class="card">
+        <h2>Important</h2>
+        <div class="small">
+          A local minimum is only a <b>possible</b> error. It means the value is lower than
+          the neighboring measurements. It does not prove that the facility failed.
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const throughput = [150, 155, 160, 158, 162, 164, 155, 150, 145, 142, 140, 138, 145, 148, 155, 157, 160, 162, 165, 170, 168, 160, 155, 150, 148, 140, 138, 135, 130, 125, 120, 118, 115, 120, 125, 130, 138, 145, 150, 155, 158, 160, 155, 150, 140, 135, 130, 125, 118, 120, 130, 140, 150, 155, 160, 165, 170, 168, 160, 155, 148, 140, 130, 125, 120, 115, 110, 105, 100, 95];
+const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const localMinima = throughput
+  .map((v,i) => (i>0 && i<throughput.length-1 && v<throughput[i-1] && v<throughput[i+1]) ? i : -1)
+  .filter(i => i>=0);
+
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+const tooltip = document.getElementById("tooltip");
+const selectedCount = document.getElementById("selectedCount");
+const selectionList = document.getElementById("selectionList");
+const feedbackCard = document.getElementById("feedbackCard");
+const feedback = document.getElementById("feedback");
+const valuesToggle = document.getElementById("valuesToggle");
+
+const selected = new Set();
+let reveal = false;
+let pointPixels = [];
+let cssW = 0, cssH = 0;
+
+function resize(){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  cssW = Math.max(320, rect.width);
+  cssH = Math.max(380, rect.height);
+  canvas.width = Math.round(cssW*dpr);
+  canvas.height = Math.round(cssH*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+
+function geometry(){
+  const m = {left:62,right:22,top:58,bottom:55};
+  return {
+    m,
+    plotW: cssW-m.left-m.right,
+    plotH: cssH-m.top-m.bottom,
+    minY: 80,
+    maxY: 180
+  };
+}
+
+function xFor(i,g){
+  return g.m.left + (i/(throughput.length-1))*g.plotW;
+}
+function yFor(v,g){
+  return g.m.top + ((g.maxY-v)/(g.maxY-g.minY))*g.plotH;
+}
+
+function draw(){
+  if(!cssW || !cssH) return;
+  const g=geometry();
+  ctx.clearRect(0,0,cssW,cssH);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,cssW,cssH);
+
+  // Alternating day backgrounds and day labels.
+  for(let d=0;d<7;d++){
+    const start=d*10;
+    const end=Math.min(start+9,69);
+    const x1=xFor(start,g);
+    const x2=xFor(end,g);
+    const left=d===0 ? g.m.left : (xFor(start-1,g)+x1)/2;
+    const right=d===6 ? g.m.left+g.plotW : (x2+xFor(end+1,g))/2;
+    if(d%2===1){
+      ctx.fillStyle="#f8fafc";
+      ctx.fillRect(left,g.m.top,right-left,g.plotH);
+    }
+    ctx.fillStyle="#475569";
+    ctx.font="600 12px system-ui";
+    ctx.textAlign="center";
+    ctx.fillText(days[d],(left+right)/2,28);
+  }
+
+  // Horizontal grid and y labels.
+  ctx.font="11px system-ui";
+  ctx.textAlign="right";
+  for(let v=80;v<=180;v+=20){
+    const y=yFor(v,g);
+    ctx.strokeStyle="#e5e7eb";
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(g.m.left,y);ctx.lineTo(g.m.left+g.plotW,y);ctx.stroke();
+    ctx.fillStyle="#475569";
+    ctx.fillText(String(v),g.m.left-9,y+4);
+  }
+
+  // Day separators.
+  ctx.setLineDash([5,5]);
+  for(let d=1;d<7;d++){
+    const a=xFor(d*10-1,g), b=xFor(d*10,g);
+    const x=(a+b)/2;
+    ctx.strokeStyle="#94a3b8";
+    ctx.beginPath();ctx.moveTo(x,g.m.top);ctx.lineTo(x,g.m.top+g.plotH);ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Axes.
+  ctx.strokeStyle="#111827";
+  ctx.lineWidth=1.3;
+  ctx.strokeRect(g.m.left,g.m.top,g.plotW,g.plotH);
+  ctx.fillStyle="#374151";
+  ctx.font="12px system-ui";
+  ctx.textAlign="center";
+  ctx.fillText("Entry [-]",g.m.left+g.plotW/2,cssH-13);
+  ctx.save();
+  ctx.translate(17,g.m.top+g.plotH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("Throughput [items/h]",0,0);
+  ctx.restore();
+
+  // X ticks.
+  for(let e=10;e<=70;e+=10){
+    ctx.fillStyle="#475569";
+    ctx.font="11px system-ui";
+    ctx.textAlign="center";
+    ctx.fillText(String(e),xFor(e-1,g),g.m.top+g.plotH+20);
+  }
+
+  // Throughput line.
+  ctx.strokeStyle="#2563eb";
+  ctx.lineWidth=2.4;
+  ctx.beginPath();
+  throughput.forEach((v,i)=>{
+    const x=xFor(i,g), y=yFor(v,g);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  pointPixels = throughput.map((v,i)=>({x:xFor(i,g),y:yFor(v,g),i,v}));
+
+  // Base points.
+  for(const p of pointPixels){
+    ctx.beginPath();ctx.arc(p.x,p.y,3.2,0,Math.PI*2);
+    ctx.fillStyle="#2563eb";ctx.fill();
+  }
+
+  // Student marks.
+  for(const i of selected){
+    const p=pointPixels[i];
+    ctx.beginPath();ctx.arc(p.x,p.y,7.5,0,Math.PI*2);
+    ctx.fillStyle="#f59e0b";ctx.fill();
+    ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fillStyle="#fff";ctx.fill();
+  }
+
+  // MATLAB-style local minima reveal.
+  if(reveal){
+    for(const i of localMinima){
+      const p=pointPixels[i];
+      ctx.strokeStyle="#ef4444";
+      ctx.lineWidth=2.4;
+      const r=8;
+      ctx.beginPath();
+      ctx.moveTo(p.x-r,p.y-r);ctx.lineTo(p.x+r,p.y+r);
+      ctx.moveTo(p.x+r,p.y-r);ctx.lineTo(p.x-r,p.y+r);
+      ctx.stroke();
+    }
+  }
+
+  if(valuesToggle.checked){
+    ctx.font="10px system-ui";
+    ctx.textAlign="center";
+    for(const p of pointPixels){
+      ctx.fillStyle="#111827";
+      ctx.fillText(String(p.v),p.x,p.y-9);
+    }
+  }
+}
+
+function nearestPoint(ev){
+  const r=canvas.getBoundingClientRect();
+  const x=ev.clientX-r.left, y=ev.clientY-r.top;
+  let best=null, bestD=Infinity;
+  for(const p of pointPixels){
+    const d=Math.hypot(x-p.x,y-p.y);
+    if(d<bestD){bestD=d;best=p;}
+  }
+  return bestD<=13 ? best : null;
+}
+
+function dayHour(i){
+  return {day:days[Math.floor(i/10)], hour:(i%10)+1};
+}
+
+function updateSelection(){
+  selectedCount.textContent=selected.size;
+  if(!selected.size){
+    selectionList.textContent="No points selected.";
+  } else {
+    selectionList.innerHTML=[...selected].sort((a,b)=>a-b).map(i=>{
+      const d=dayHour(i);
+      return `<div class="entry"><span>${d.day}, measurement ${d.hour} (entry ${i+1})</span><b>${throughput[i]}</b></div>`;
+    }).join("");
+  }
+  feedbackCard.style.display="none";
+  draw();
+}
+
+canvas.addEventListener("click",ev=>{
+  const p=nearestPoint(ev);
+  if(!p) return;
+  if(selected.has(p.i)) selected.delete(p.i); else selected.add(p.i);
+  updateSelection();
+});
+
+canvas.addEventListener("mousemove",ev=>{
+  const p=nearestPoint(ev);
+  if(!p){tooltip.style.display="none";canvas.style.cursor="default";return;}
+  const d=dayHour(p.i);
+  const r=canvas.getBoundingClientRect();
+  tooltip.innerHTML=`<b>${d.day}</b> · measurement ${d.hour}<br>Entry ${p.i+1}: ${p.v} items/h`;
+  tooltip.style.left=Math.min(r.width-145,p.x+10)+"px";
+  tooltip.style.top=Math.max(4,p.y-48)+"px";
+  tooltip.style.display="block";
+  canvas.style.cursor="pointer";
+});
+canvas.addEventListener("mouseleave",()=>{tooltip.style.display="none";canvas.style.cursor="default";});
+
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  selected.clear();
+  reveal=false;
+  document.getElementById("revealBtn").textContent="Show MATLAB local minima";
+  updateSelection();
+});
+
+document.getElementById("revealBtn").addEventListener("click",()=>{
+  reveal=!reveal;
+  document.getElementById("revealBtn").textContent=reveal ? "Hide MATLAB local minima" : "Show MATLAB local minima";
+  draw();
+});
+
+document.getElementById("checkBtn").addEventListener("click",()=>{
+  const correct=localMinima.filter(i=>selected.has(i));
+  const missed=localMinima.filter(i=>!selected.has(i));
+  const extra=[...selected].filter(i=>!localMinima.includes(i)).sort((a,b)=>a-b);
+
+  reveal=true;
+  document.getElementById("revealBtn").textContent="Hide MATLAB local minima";
+  feedbackCard.style.display="block";
+
+  const fmt=arr=>arr.length ? arr.map(i=>`${i+1} (${throughput[i]} items/h)`).join(", ") : "none";
+  feedback.innerHTML=
+    `<b>MATLAB-style local minima:</b> ${fmt(localMinima)}.<br><br>`+
+    `<span style="color:#86efac">Matched:</span> ${fmt(correct)}<br>`+
+    `<span style="color:#fde68a">Missed:</span> ${fmt(missed)}<br>`+
+    `<span style="color:#fca5a5">Additional points you marked:</span> ${fmt(extra)}<br><br>`+
+    `<span class="small">This comparison only checks the mathematical local-minimum rule. `+
+    `A real error diagnosis would require additional process information or a defined threshold.</span>`;
+  draw();
+});
+
+valuesToggle.addEventListener("change",draw);
+
+if("ResizeObserver" in window){
+  new ResizeObserver(resize).observe(canvas);
+}else{
+  window.addEventListener("resize",resize);
+}
+resize();
+updateSelection();
+})();
+</script>
+</body>
+</html>

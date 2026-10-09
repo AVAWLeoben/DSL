@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Müllauto Simulation</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#20242d; --text:#eef1f5;
+    --muted:#9aa4b2; --accent:#7dd3fc; --border:#303744; --green:#22c55e;
+    --red:#ef4444; --truck:#f8fafc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .wrap{max-width:1200px;margin:0 auto;padding:20px}
+  h1{font-size:24px;margin:0 0 6px}
+  .sub{color:var(--muted);margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:320px 1fr;gap:18px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}
+  .controls{display:grid;gap:12px}
+  label{font-size:13px;color:var(--muted);display:grid;gap:5px}
+  input,select,button{font:inherit}
+  input,select{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text)}
+  .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  button{padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--text);cursor:pointer}
+  button.primary{background:#0ea5e9;color:#06131b;border-color:#0ea5e9;font-weight:700}
+  button:hover{filter:brightness(1.08)}
+  .stats{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{background:var(--panel2);padding:9px;border-radius:8px}
+  .stat b{display:block;font-size:17px}
+  .stat span{font-size:11px;color:var(--muted)}
+  .tabs{display:flex;gap:8px;margin-bottom:12px}
+  .tab.active{background:#0ea5e9;color:#06131b;border-color:#0ea5e9;font-weight:700}
+  .stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);gap:14px}
+  canvas{width:100%;background:#fff;border-radius:10px;border:1px solid var(--border)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:8px}
+  .key{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:11px;height:11px;border-radius:2px;display:inline-block}
+  .note{font-size:12px;color:var(--muted);line-height:1.4;margin-top:12px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}.stage{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Müllauto Simulation</h1>
+  <div class="sub">Standalone browser version of the MATLAB waste-bin collection simulation.</div>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="controls">
+        <label>Number of waste bins
+          <input id="bins" type="number" min="1" max="10000" value="100">
+        </label>
+        <label>Number of trucks
+          <input id="trucks" type="number" min="1" max="30" value="4">
+        </label>
+        <label>City size (width × height)
+          <input id="citySize" type="number" min="1" max="1000" step="1" value="10">
+        </label>
+        <label>Method
+          <select id="method">
+            <option value="greedy">Greedy</option>
+            <option value="unique">Unique</option>
+            <option value="optimized">Optimize3D</option>
+          </select>
+        </label>
+        <label>Distance weight
+          <input id="distanceWeight" type="number" step="0.1" value="0.5">
+        </label>
+        <label>Workload balance weight (Optimize3D)
+          <input id="workloadWeight" type="number" min="0" step="0.25" value="2">
+        </label>
+        <label>Truck speed per iteration
+          <input id="speed" type="number" min="0.01" step="0.05" value="0.5">
+        </label>
+        <label>Emptying distance
+          <input id="emptyDist" type="number" min="0.01" step="0.05" value="0.5">
+        </label>
+        <label>Maximum iterations
+          <input id="maxIt" type="number" min="1" max="10000" value="500">
+        </label>
+        <label>Random seed
+          <input id="seed" type="number" value="12345">
+        </label>
+
+        <div class="buttons">
+          <button class="primary" id="startBtn">Start / Reset</button>
+          <button id="pauseBtn">Pause</button>
+          <button id="stepBtn">Step</button>
+          <button id="compareBtn">Run comparison</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><b id="iterStat">0</b><span>Iteration</span></div>
+        <div class="stat"><b id="collectedStat">0%</b><span>Garbage collected</span></div>
+        <div class="stat"><b id="remainingStat">0</b><span>Bins remaining</span></div>
+        <div class="stat"><b id="elapsedStat">0.00 s</b><span>Elapsed time</span></div>
+      </div>
+
+      <div class="note">
+        Greedy chooses the nearest remaining bin. Unique chooses the nearest remaining bin not already assigned to another truck.
+        Optimize3D assigns idle trucks and bins together using three criteria: <b>short travel distance</b>,
+        <b>no duplicate targets</b>, and <b>balanced cumulative truck workload</b>.
+        City size changes the physical coordinate area; with the same bin count, a larger city means greater average distance between bins.
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="tabs">
+        <button class="tab active" data-tab="sim">Simulation</button>
+        <button class="tab" data-tab="compare">Comparison</button>
+      </div>
+
+      <div id="simView">
+        <div class="stage">
+          <div>
+            <canvas id="simCanvas" width="620" height="620"></canvas>
+            <div class="legend">
+              <span class="key"><span class="dot" style="background:#ef4444"></span>filled bin</span>
+              <span class="key"><span class="dot" style="background:#22c55e"></span>emptied bin</span>
+              <span class="key"><span class="dot" style="background:#111827"></span>truck</span>
+            </div>
+          </div>
+          <div>
+            <canvas id="progressCanvas" width="520" height="360"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="compareView" style="display:none">
+        <canvas id="compareCanvas" width="980" height="520"></canvas>
+        <div class="legend">
+          <span>Comparison uses the same initial bins, fill levels and truck positions for all three methods.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+
+class RNG {
+  constructor(seed=12345){ this.s = (seed >>> 0) || 1; }
+  next(){
+    let x = this.s;
+    x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+    this.s = x >>> 0;
+    return this.s / 4294967296;
+  }
+  int(min,max){ return Math.floor(this.next()*(max-min+1))+min; }
+}
+
+function params(){
+  return {
+    nBins: +$("bins").value,
+    nTrucks: +$("trucks").value,
+    citySize: Math.max(1, +$("citySize").value || 10),
+    method: $("method").value,
+    distanceWeight: +$("distanceWeight").value,
+    workloadWeight: +$("workloadWeight").value,
+    speed: +$("speed").value,
+    emptyDist: +$("emptyDist").value,
+    maxIt: +$("maxIt").value,
+    seed: +$("seed").value
+  };
+}
+
+function makeInitial(p){
+  const rng = new RNG(p.seed);
+  // Use continuous coordinates. The MATLAB randi(10,...) version places every
+  // bin on only 100 possible lattice points, so hundreds of bins overlap visually.
+  const bins = Array.from({length:p.nBins}, (_,i)=>({
+    id:i,
+    x:p.citySize*rng.next(),
+    y:p.citySize*rng.next(),
+    fill:rng.next(),
+    emptied:false
+  }));
+  const trucks = Array.from({length:p.nTrucks}, ()=>({
+    x:p.citySize*rng.next(),
+    y:p.citySize*rng.next(),
+    target:null,
+    distanceTravelled:0
+  }));
+  return {bins,trucks};
+}
+
+function cloneInitial(init){
+  return {
+    bins:init.bins.map(b=>({...b})),
+    trucks:init.trucks.map(t=>({...t, distanceTravelled:t.distanceTravelled ?? 0}))
+  };
+}
+
+function distance(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+
+class Simulation {
+  constructor(p, initial=null){
+    this.p={...p};
+    const init = initial ? cloneInitial(initial) : makeInitial(p);
+    this.bins=init.bins;
+    this.trucks=init.trucks;
+    this.iter=0;
+    this.start=performance.now();
+    this.totalGarbage=this.bins.reduce((s,b)=>s+b.fill,0) || 1;
+    this.collected=0;
+    this.history=[0];
+    this.done=false;
+  }
+
+  chooseTarget(truck, targeted){
+    const candidates=this.bins.filter(b=>!b.emptied && !targeted.has(b.id));
+    if(!candidates.length) return null;
+
+    let best=candidates[0], bestD=Infinity;
+    for(const b of candidates){
+      const d=distance(truck,b);
+      if(d<bestD){bestD=d;best=b;}
+    }
+    return best.id;
+  }
+
+  // Optimize3D:
+  //   1) minimize distance to the next bin,
+  //   2) never assign the same bin to two trucks,
+  //   3) favor trucks with less cumulative travel so work stays balanced.
+  //
+  // Idle trucks and free bins are considered as truck-bin PAIRS. The best pair
+  // is assigned, then removed from the pool, and the process repeats.
+  assignOptimize3D(idleTrucks, targeted){
+    const freeBins=this.bins.filter(b=>!b.emptied && !targeted.has(b.id));
+    const remainingTrucks=[...idleTrucks];
+    const remainingBins=[...freeBins];
+
+    while(remainingTrucks.length && remainingBins.length){
+      const avgTravel =
+        this.trucks.reduce((s,t)=>s+t.distanceTravelled,0) /
+        Math.max(1,this.trucks.length);
+      const loadScale=Math.max(1,avgTravel);
+
+      let bestTi=0, bestBi=0, bestScore=Infinity;
+      for(let ti=0;ti<remainingTrucks.length;ti++){
+        const t=remainingTrucks[ti];
+        const workloadPenalty=t.distanceTravelled/loadScale;
+
+        for(let bi=0;bi<remainingBins.length;bi++){
+          const b=remainingBins[bi];
+          const d=distance(t,b);
+          const score =
+            this.p.distanceWeight*d +
+            this.p.workloadWeight*workloadPenalty;
+
+          if(score<bestScore){
+            bestScore=score;
+            bestTi=ti;
+            bestBi=bi;
+          }
+        }
+      }
+
+      const truck=remainingTrucks[bestTi];
+      const bin=remainingBins[bestBi];
+      truck.target=bin.id;
+      targeted.add(bin.id);
+
+      remainingTrucks.splice(bestTi,1);
+      remainingBins.splice(bestBi,1);
+    }
+  }
+
+  emptyNearby(truck){
+    for(const b of this.bins){
+      if(!b.emptied && distance(truck,b)<this.p.emptyDist){
+        b.emptied=true;
+        this.collected+=b.fill;
+        b.fill=0;
+      }
+    }
+  }
+
+  step(){
+    if(this.done) return;
+
+    // Empty bins already close enough to a truck.
+    for(const truck of this.trucks) this.emptyNearby(truck);
+
+    // Release targets that were emptied by any truck.
+    for(const truck of this.trucks){
+      if(truck.target!==null && this.bins[truck.target]?.emptied){
+        truck.target=null;
+      }
+    }
+
+    const targeted=new Set(this.trucks.map(t=>t.target).filter(v=>v!==null));
+    const idle=this.trucks.filter(t=>t.target===null);
+
+    if(this.p.method==="greedy"){
+      // Deliberately permits duplicate targets, matching the original idea.
+      for(const truck of idle){
+        const candidates=this.bins.filter(b=>!b.emptied);
+        if(!candidates.length) break;
+        let best=candidates[0], bestD=Infinity;
+        for(const b of candidates){
+          const d=distance(truck,b);
+          if(d<bestD){bestD=d;best=b;}
+        }
+        truck.target=best.id;
+      }
+    } else if(this.p.method==="unique"){
+      for(const truck of idle){
+        truck.target=this.chooseTarget(truck,targeted);
+        if(truck.target!==null) targeted.add(truck.target);
+      }
+    } else {
+      this.assignOptimize3D(idle,targeted);
+    }
+
+    // Move every truck toward its assigned target and accumulate actual travel.
+    for(const truck of this.trucks){
+      if(truck.target===null) continue;
+      const b=this.bins[truck.target];
+      if(!b || b.emptied){ truck.target=null; continue; }
+
+      const dx=b.x-truck.x, dy=b.y-truck.y;
+      const norm=Math.hypot(dx,dy);
+      if(norm>0){
+        const move=Math.min(this.p.speed,norm);
+        truck.x += dx/norm*move;
+        truck.y += dy/norm*move;
+        truck.distanceTravelled += move;
+      }
+      this.emptyNearby(truck);
+      if(b.emptied) truck.target=null;
+    }
+
+    this.iter++;
+    this.history.push(100*this.collected/this.totalGarbage);
+
+    const remaining=this.bins.some(b=>!b.emptied);
+    if(!remaining || this.iter>=this.p.maxIt){
+      this.done=true;
+    }
+  }
+
+}
+
+const simCanvas=$("simCanvas"), sctx=simCanvas.getContext("2d");
+const progressCanvas=$("progressCanvas"), pctx=progressCanvas.getContext("2d");
+const compareCanvas=$("compareCanvas"), cctx=compareCanvas.getContext("2d");
+
+let sim=null, running=false, raf=null;
+
+function mapX(x,w,citySize){ return 35+(x/citySize)*(w-70); }
+function mapY(y,h,citySize){ return h-35-(y/citySize)*(h-70); }
+
+function niceGridStep(size){
+  const raw=size/10;
+  const pow=Math.pow(10,Math.floor(Math.log10(raw)));
+  const n=raw/pow;
+  return (n<=1 ? 1 : n<=2 ? 2 : n<=5 ? 5 : 10)*pow;
+}
+
+function grid(ctx,w,h,citySize){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle="#e5e7eb"; ctx.lineWidth=1;
+  const step=niceGridStep(citySize);
+  ctx.fillStyle="#374151"; ctx.font="11px system-ui";
+  for(let v=0;v<=citySize+step*0.001;v+=step){
+    const x=mapX(v,w,citySize), y=mapY(v,h,citySize);
+    ctx.strokeStyle="#e5e7eb";
+    ctx.beginPath(); ctx.moveTo(x,35); ctx.lineTo(x,h-35); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(35,y); ctx.lineTo(w-35,y); ctx.stroke();
+    ctx.fillStyle="#374151";
+    const label=Number.isInteger(v) ? String(v) : v.toFixed(1);
+    ctx.fillText(label,x-4,h-16);
+    ctx.fillText(label,7,y+4);
+  }
+  ctx.strokeStyle="#111827"; ctx.strokeRect(35,35,w-70,h-70);
+}
+
+function drawSim(){
+  if(!sim) return;
+  const w=simCanvas.width,h=simCanvas.height;
+  grid(sctx,w,h,sim.p.citySize);
+
+  const marker =
+    sim.p.nBins <= 120 ? 10 :
+    sim.p.nBins <= 500 ? 6 :
+    sim.p.nBins <= 1500 ? 4 : 3;
+
+  for(const b of sim.bins){
+    const x=mapX(b.x,w,sim.p.citySize), y=mapY(b.y,h,sim.p.citySize);
+    sctx.fillStyle=b.emptied?"#22c55e":`rgb(${Math.round(120+135*b.fill)},40,40)`;
+    sctx.fillRect(x-marker/2,y-marker/2,marker,marker);
+    if(sim.p.nBins<=120){
+      sctx.fillStyle="#111827"; sctx.font="9px system-ui";
+      sctx.fillText(String(b.id+1),x+6,y-6);
+    }
+  }
+
+  // Visualize the exact emptying/collection radius around every truck.
+  // Because mapX/mapY use the same scale in both directions, the simulation
+  // distance can be converted directly to canvas pixels.
+  const emptyRadiusPx = sim.p.emptyDist * ((w-70)/sim.p.citySize);
+
+  for(const t of sim.trucks){
+    const x=mapX(t.x,w,sim.p.citySize), y=mapY(t.y,h,sim.p.citySize);
+
+    sctx.save();
+    sctx.beginPath();
+    sctx.arc(x,y,emptyRadiusPx,0,Math.PI*2);
+    sctx.fillStyle="rgba(14,165,233,.08)";
+    sctx.fill();
+    sctx.strokeStyle="rgba(14,165,233,.65)";
+    sctx.lineWidth=1.5;
+    sctx.setLineDash([5,4]);
+    sctx.stroke();
+    sctx.restore();
+
+    if(t.target!==null && !sim.bins[t.target].emptied){
+      const b=sim.bins[t.target];
+      sctx.strokeStyle="rgba(14,165,233,.35)";
+      sctx.lineWidth=1;
+      sctx.beginPath(); sctx.moveTo(x,y); sctx.lineTo(mapX(b.x,w,sim.p.citySize),mapY(b.y,h,sim.p.citySize)); sctx.stroke();
+    }
+    sctx.fillStyle="#111827";
+    sctx.fillRect(x-7,y-7,14,14);
+  }
+
+  drawProgress();
+  updateStats();
+}
+
+function axes(ctx,w,h,title,xLabel,yLabel){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#111827";ctx.font="bold 14px system-ui";ctx.fillText(title,16,22);
+  const L=50,R=18,T=38,B=42;
+  ctx.strokeStyle="#d1d5db";
+  for(let y=0;y<=100;y+=20){
+    const py=T+(100-y)/100*(h-T-B);
+    ctx.beginPath();ctx.moveTo(L,py);ctx.lineTo(w-R,py);ctx.stroke();
+    ctx.fillStyle="#4b5563";ctx.font="10px system-ui";ctx.fillText(y+"%",10,py+3);
+  }
+  ctx.strokeStyle="#111827";
+  ctx.beginPath();ctx.moveTo(L,T);ctx.lineTo(L,h-B);ctx.lineTo(w-R,h-B);ctx.stroke();
+  ctx.fillStyle="#4b5563";ctx.font="11px system-ui";ctx.fillText(xLabel,w/2-35,h-12);
+  ctx.save();ctx.translate(14,h/2+35);ctx.rotate(-Math.PI/2);ctx.fillText(yLabel,0,0);ctx.restore();
+  return {L,R,T,B};
+}
+
+function drawLine(ctx, data, box, w,h, stroke, maxX=null){
+  if(data.length<2) return;
+  const n=maxX ?? (data.length-1);
+  ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=box.L+(i/Math.max(1,n))*(w-box.L-box.R);
+    const y=box.T+(100-v)/100*(h-box.T-box.B);
+    if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+function drawProgress(){
+  const w=progressCanvas.width,h=progressCanvas.height;
+  const box=axes(pctx,w,h,"Garbage Collected Over Time","Iterations","Collected garbage");
+  drawLine(pctx,sim.history,box,w,h,"#0ea5e9",sim.p.maxIt);
+}
+
+function updateStats(){
+  $("iterStat").textContent=sim.iter;
+  $("collectedStat").textContent=(100*sim.collected/sim.totalGarbage).toFixed(1)+"%";
+  $("remainingStat").textContent=sim.bins.filter(b=>!b.emptied).length;
+  $("elapsedStat").textContent=((performance.now()-sim.start)/1000).toFixed(2)+" s";
+}
+
+function loop(){
+  if(!running) return;
+  const stepsPerFrame=1;
+  for(let k=0;k<stepsPerFrame && !sim.done;k++) sim.step();
+  drawSim();
+  if(sim.done){running=false;$("pauseBtn").textContent="Resume";return;}
+  raf=requestAnimationFrame(loop);
+}
+
+function start(){
+  if(raf) cancelAnimationFrame(raf);
+  sim=new Simulation(params());
+  running=true;
+  $("pauseBtn").textContent="Pause";
+  drawSim();
+  loop();
+}
+
+function togglePause(){
+  if(!sim) return;
+  running=!running;
+  $("pauseBtn").textContent=running?"Pause":"Resume";
+  if(running) loop();
+}
+
+function stepOnce(){
+  if(!sim) sim=new Simulation(params());
+  running=false;$("pauseBtn").textContent="Resume";
+  sim.step();drawSim();
+}
+
+function runComparison(){
+  const p=params(), init=makeInitial(p);
+  const methods=["greedy","unique","optimized"];
+  const results={};
+
+  for(const method of methods){
+    const s=new Simulation({...p,method},init);
+    while(!s.done) s.step();
+    results[method]=s.history;
+  }
+  drawComparison(results,p.maxIt);
+  showTab("compare");
+}
+
+function drawComparison(results,maxIt){
+  const w=compareCanvas.width,h=compareCanvas.height;
+  const box=axes(cctx,w,h,"Method Comparison","Iterations","Collected garbage");
+  const styles={greedy:"#ef4444",unique:"#0ea5e9",optimized:"#22c55e"};
+  for(const k of ["greedy","unique","optimized"]) drawLine(cctx,results[k],box,w,h,styles[k],maxIt);
+
+  cctx.font="12px system-ui";
+  let x=w-280,y=50;
+  for(const k of ["greedy","unique","optimized"]){
+    cctx.fillStyle=styles[k];cctx.fillRect(x,y-8,18,3);
+    const label=k==="optimized" ? "Optimize3D" : k[0].toUpperCase()+k.slice(1);
+    cctx.fillStyle="#111827";cctx.fillText(label,x+26,y-4);
+    y+=20;
+  }
+}
+
+function showTab(name){
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+  $("simView").style.display=name==="sim"?"block":"none";
+  $("compareView").style.display=name==="compare"?"block":"none";
+}
+
+$("emptyDist").addEventListener("input",()=>{
+  if(!sim) return;
+  const v=Math.max(0.01, Number($("emptyDist").value) || 0.01);
+  sim.p.emptyDist=v;
+  drawSim();
+});
+
+$("startBtn").addEventListener("click",()=>{showTab("sim");start();});
+$("pauseBtn").addEventListener("click",togglePause);
+$("stepBtn").addEventListener("click",()=>{showTab("sim");stepOnce();});
+$("compareBtn").addEventListener("click",runComparison);
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+
+sim=new Simulation(params());
+drawSim();
+</script>
+</body>
+</html>

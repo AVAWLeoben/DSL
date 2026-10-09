@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YOLO LiteRT Classroom Demo</title>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;--muted:#9aa4b2;--border:#303744;--accent:#38bdf8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1320px;margin:auto;padding:18px}h1{font-size:25px;margin:0 0 5px}.sub{margin:0 0 14px;color:var(--muted);line-height:1.45}
+.layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(340px,1fr);gap:14px}.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:13px}
+.stage{position:relative;aspect-ratio:16/9;background:#050608;border-radius:10px;overflow:hidden}
+#video,#stillView{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#050608;z-index:1}#stillView{display:none}
+#overlay{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+.loadingOverlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,7,18,.42);backdrop-filter:blur(2px);z-index:20;padding:20px;text-align:center}
+.loadingOverlay.show{display:flex}.loadingCard{min-width:280px;max-width:min(90%,460px);background:rgba(10,15,25,.88);border:1px solid rgba(148,163,184,.35);border-radius:14px;padding:18px 20px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.spinner{width:58px;height:58px;border:6px solid rgba(255,255,255,.18);border-top-color:#38bdf8;border-right-color:#38bdf8;border-radius:50%;margin:0 auto 14px;animation:spin .85s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.loadingTitle{font-size:20px;font-weight:800}.loadingText{font-size:13px;color:#cbd5e1;margin-top:6px;white-space:pre-line;line-height:1.45}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}button,select,input[type=file]{background:#2a303a;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:8px}
+button{cursor:pointer}button:hover{filter:brightness(1.12)}button.primary{background:#075985;border-color:#0ea5e9}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:9px}.control{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:9px}.control label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+input[type=range],select,input[type=file]{width:100%}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px}
+.stat .k{font-size:11px;color:var(--muted)}.stat .v{font-size:17px;font-weight:700;margin-top:2px;word-break:break-word}
+.status{margin-top:10px;background:#11151c;border:1px solid var(--border);border-radius:8px;padding:9px;font-size:12px;line-height:1.45;white-space:pre-wrap;max-height:190px;overflow:auto}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}kbd{background:#11151c;border:1px solid #475569;border-radius:4px;padding:1px 5px;color:#e5e7eb}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#11151c;border:1px solid var(--border);font-size:12px}
+@media(max-width:950px){.layout{grid-template-columns:1fr}}@media(max-width:560px){.controls,.stats{grid-template-columns:1fr}}
+</style>
+<script type="importmap">
+{"imports":{
+"@ultralytics/yolo":"https://esm.sh/@ultralytics/yolo@0.0.49",
+"@litertjs/core":"https://esm.sh/@litertjs/core@2.5.3",
+"@litertjs/wasm-utils":"https://esm.sh/@litertjs/wasm-utils@2.5.3"
+}}
+</script>
+</head>
+<body>
+<div class="wrap">
+<h1>YOLO LiteRT Classroom Demo</h1>
+<p class="sub">Browser object detection using Ultralytics LiteRT/TFLite models. The live webcam stays independent from inference, so model loading or a slow frame never freezes the video feed.</p>
+<div class="layout">
+<section class="panel">
+<div id="stage" class="stage">
+<video id="video" autoplay muted playsinline></video>
+<img id="stillView" alt="">
+<canvas id="overlay" width="1280" height="720"></canvas>
+<div id="loadingOverlay" class="loadingOverlay"><div class="loadingCard"><div class="spinner"></div><div id="loadingTitle" class="loadingTitle">Loading LiteRT model…</div><div id="loadingText" class="loadingText">Preparing WebGPU</div></div></div>
+</div>
+<div class="buttons">
+<button id="cameraBtn" class="primary">Start webcam</button><button id="stopBtn">Stop webcam</button><button id="pauseBtn">Pause inference</button><button id="clearBtn">Clear boxes</button>
+</div>
+<div class="note">Keyboard: <kbd>o</kbd>/<kbd>p</kbd> previous/next model, <kbd>+</kbd>/<kbd>-</kbd> image size, <kbd>c</kbd>/<kbd>v</kbd> confidence, <kbd>Esc</kbd> pause inference.</div>
+</section>
+
+<aside class="panel">
+<div class="control">
+<label>Classroom LiteRT models</label>
+<div class="note">Models are loaded automatically from the <span class="badge">models/</span> folder in this site. No local model upload is required.</div>
+</div>
+<div class="control" style="margin-top:9px"><label>Backup image</label><input id="imageFile" type="file" accept="image/*"></div>
+
+<div class="controls" style="margin-top:10px">
+<div class="control"><label>Model family</label><select id="modelSelect"></select></div>
+<div class="control"><label>Inference size</label><select id="imgSize"><option selected>160</option><option>320</option><option>640</option><option>1280</option></select></div>
+<div class="control"><label>Confidence <b id="confVal">0.25</b></label><input id="conf" type="range" min="0.05" max="0.95" value="0.25" step="0.05"></div>
+<div class="control"><label>NMS IoU <b id="iouVal">0.70</b></label><input id="iou" type="range" min="0.10" max="0.95" value="0.70" step="0.05"></div>
+</div>
+
+<div class="stats">
+<div class="stat"><div class="k">Loaded model</div><div id="modelStat" class="v">None</div></div>
+<div class="stat"><div class="k">Backend</div><div id="deviceStat" class="v">—</div></div>
+<div class="stat"><div class="k">Model load time</div><div id="loadStat" class="v">—</div></div>
+<div class="stat"><div class="k">Preprocess</div><div id="preStat" class="v">—</div></div>
+<div class="stat"><div class="k">Inference</div><div id="inferStat" class="v">—</div></div>
+<div class="stat"><div class="k">Postprocess</div><div id="postStat" class="v">—</div></div>
+<div class="stat"><div class="k">Wall time</div><div id="wallStat" class="v">—</div></div>
+<div class="stat"><div class="k">Detections</div><div id="detStat" class="v">0</div></div>
+<div class="stat"><div class="k">Cached models</div><div id="cacheStat" class="v">0</div></div>
+<div class="stat"><div class="k">WebGPU</div><div id="gpuStat" class="v">—</div></div>
+</div>
+
+<div id="status" class="status">Webcam controls are ready. Loading the YOLO browser runtime…</div>
+<div class="note">Each model/size combination is a fixed-size LiteRT file hosted with this page. Successfully loaded models are cached in memory, so switching back to one should be much faster.</div>
+</aside>
+</div>
+</div>
+
+<script type="module">
+let YOLO=null,runtimeError=null;
+const $=id=>document.getElementById(id);
+const els={stage:$("stage"),video:$("video"),stillView:$("stillView"),overlay:$("overlay"),loadingOverlay:$("loadingOverlay"),loadingTitle:$("loadingTitle"),loadingText:$("loadingText"),
+cameraBtn:$("cameraBtn"),stopBtn:$("stopBtn"),pauseBtn:$("pauseBtn"),clearBtn:$("clearBtn"),imageFile:$("imageFile"),modelSelect:$("modelSelect"),imgSize:$("imgSize"),
+conf:$("conf"),confVal:$("confVal"),iou:$("iou"),iouVal:$("iouVal"),modelStat:$("modelStat"),deviceStat:$("deviceStat"),loadStat:$("loadStat"),preStat:$("preStat"),inferStat:$("inferStat"),
+postStat:$("postStat"),wallStat:$("wallStat"),detStat:$("detStat"),cacheStat:$("cacheStat"),gpuStat:$("gpuStat"),status:$("status")};
+
+const ctx=els.overlay.getContext("2d");
+let stream=null,stillImage=null,sourceMode="none",running=true,busy=false;
+let catalog=new Map(),modelCache=new Map();
+// Put these files in a models/ folder next to index.html.
+// Edit this list if you add/remove model files.
+const MODEL_FILES=[
+  "yolov8n_160.tflite",
+  "yolov8n_320.tflite",
+  "yolov8n_640.tflite",
+  "yolov8n_1280.tflite",
+  "yolo11n_160.tflite",
+  "yolo11n_320.tflite",
+  "yolo11n_640.tflite",
+  "yolo11n_1280.tflite",
+  "yolo26n_160.tflite",
+  "yolo26n_320.tflite",
+  "yolo26n_640.tflite",
+  "yolo26n_1280.tflite"
+];
+let currentFamily=null,currentSize=160,currentFilename=null,currentModel=null;
+let loadGeneration=0,loadTimer=null,loadStarted=0;
+
+function status(msg){els.status.textContent=msg}
+function fmt(ms){return Number.isFinite(ms)?`${ms.toFixed(1)} ms`:"—"}
+function humanBytes(n){if(n<1024)return `${n} B`;if(n<1048576)return `${(n/1024).toFixed(1)} KB`;return `${(n/1048576).toFixed(1)} MB`}
+function parseFile(name){const stem=name.replace(/\.tflite$/i,"");const m=stem.match(/^(.*?)[_-](160|320|640|1280)$/i);return m?{family:m[1],size:+m[2]}:{family:stem,size:null}}
+function clearBoxes(){ctx.clearRect(0,0,els.overlay.width,els.overlay.height)}
+function setStageSize(w,h){if(!w||!h)return;els.stage.style.aspectRatio=`${w}/${h}`;els.overlay.width=w;els.overlay.height=h}
+function showLoading(filename,title="Loading LiteRT model…"){loadStarted=performance.now();els.loadingTitle.textContent=title;els.loadingOverlay.classList.add("show");if(loadTimer)clearInterval(loadTimer);const tick=()=>els.loadingText.textContent=`${filename}\n${((performance.now()-loadStarted)/1000).toFixed(1)} s elapsed`;tick();loadTimer=setInterval(tick,100)}
+function hideLoading(){els.loadingOverlay.classList.remove("show");if(loadTimer){clearInterval(loadTimer);loadTimer=null}}
+function colorForBox(b){const c=b?.color;return Array.isArray(c)&&c.length>=3?`rgb(${c[0]},${c[1]},${c[2]})`:`hsl(${((Number(b?.cls)||0)*47)%360} 90% 55%)`}
+function drawBoxes(results){
+ const boxes=results?.boxes||[];clearBoxes();ctx.save();ctx.lineWidth=Math.max(2,els.overlay.width/550);ctx.font=`${Math.max(13,Math.round(els.overlay.width/60))}px system-ui`;ctx.textBaseline="top";
+ for(const b of boxes){const x1=+b.x1,y1=+b.y1,x2=+b.x2,y2=+b.y2;if(![x1,y1,x2,y2].every(Number.isFinite))continue;const color=colorForBox(b);ctx.strokeStyle=color;ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+ const label=`${b.name??("class "+b.cls)} ${((+b.conf||0)*100).toFixed(0)}%`,pad=4,tw=ctx.measureText(label).width,th=parseFloat(ctx.font)+2*pad,ly=Math.max(0,y1-th);
+ ctx.fillStyle="rgba(0,0,0,.75)";ctx.fillRect(x1,ly,tw+2*pad,th);ctx.fillStyle=color;ctx.fillText(label,x1+pad,ly+pad)}ctx.restore()
+}
+
+async function loadRuntime(){try{const mod=await import("@ultralytics/yolo");YOLO=mod.YOLO;status("YOLO LiteRT browser runtime ready. Loading the default classroom model…");rebuildCatalog();refreshFamilySelect();refreshSizeSelect(160);await loadSelectedModel()}catch(e){runtimeError=e;status(`YOLO runtime error:\n${e?.stack||e}`)}}
+loadRuntime();els.gpuStat.textContent=navigator.gpu?"Available":"Unavailable";
+
+async function startCamera(){try{status("Requesting webcam permission…");if(!navigator.mediaDevices?.getUserMedia)throw new Error("getUserMedia unavailable. Use HTTPS or localhost.");if(stream)stopCamera();
+ stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});els.video.srcObject=stream;
+ await new Promise(r=>{if(els.video.readyState>=1&&els.video.videoWidth)r();else els.video.onloadedmetadata=r});await els.video.play();sourceMode="camera";els.video.style.display="block";els.stillView.style.display="none";
+ setStageSize(els.video.videoWidth,els.video.videoHeight);status(`Webcam connected: ${els.video.videoWidth}×${els.video.videoHeight}`)}catch(e){status(`Camera error:\n${e?.stack||e}`)}}
+function stopCamera(){if(stream)for(const t of stream.getTracks())t.stop();stream=null;els.video.srcObject=null;if(sourceMode==="camera")sourceMode=stillImage?"image":"none"}
+els.cameraBtn.onclick=startCamera;els.stopBtn.onclick=()=>{stopCamera();status("Webcam stopped.")};els.pauseBtn.onclick=()=>{running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference";status(running?"Inference resumed.":"Inference paused. Webcam remains live.")};els.clearBtn.onclick=clearBoxes;
+
+els.imageFile.onchange=async()=>{const f=els.imageFile.files?.[0];if(!f)return;const img=new Image();img.src=URL.createObjectURL(f);await img.decode();stillImage=img;if(sourceMode!=="camera"){sourceMode="image";els.stillView.src=img.src;els.stillView.style.display="block";els.video.style.display="none";setStageSize(img.naturalWidth,img.naturalHeight)}status(`Backup image loaded: ${f.name}`)};
+function currentSource(){if(sourceMode==="camera"&&stream&&els.video.readyState>=2)return els.video;if(stillImage)return stillImage;return null}
+
+function rebuildCatalog(){catalog.clear();for(const fn of MODEL_FILES){const {family,size}=parseFile(fn);if(!catalog.has(family))catalog.set(family,new Map());catalog.get(family).set(size,fn)}}
+function refreshFamilySelect(){const fs=[...catalog.keys()].sort();els.modelSelect.innerHTML="";for(const f of fs){const o=document.createElement("option");o.value=f;o.textContent=f;els.modelSelect.appendChild(o)}if(!fs.length){currentFamily=null;return}if(!fs.includes(currentFamily))currentFamily=fs[0];els.modelSelect.value=currentFamily}
+function refreshSizeSelect(pref=160){if(!currentFamily||!catalog.has(currentFamily))return;const av=[...catalog.get(currentFamily).keys()].filter(Number.isFinite).sort((a,b)=>a-b);els.imgSize.innerHTML="";
+ for(const s of av){const o=document.createElement("option");o.value=String(s);o.textContent=String(s);els.imgSize.appendChild(o)}if(!av.length){const o=document.createElement("option");o.value="";o.textContent="metadata";els.imgSize.appendChild(o);currentSize=null;return}currentSize=av.includes(pref)?pref:(av.includes(160)?160:av[0]);els.imgSize.value=String(currentSize)}
+function selectedFilename(){if(!currentFamily||!catalog.has(currentFamily))return null;const m=catalog.get(currentFamily);if(currentSize!==null&&m.has(currentSize))return m.get(currentSize);return m.get(null)||[...m.values()][0]||null}
+
+els.modelSelect.onchange=async()=>{currentFamily=els.modelSelect.value;refreshSizeSelect(160);await loadSelectedModel()};
+els.imgSize.onchange=async()=>{currentSize=els.imgSize.value?+els.imgSize.value:null;await loadSelectedModel()};
+
+async function loadSelectedModel(){
+ const filename=selectedFilename();if(!filename)return;if(!YOLO){status(runtimeError?`Cannot load model: runtime failed.\n${runtimeError?.stack||runtimeError}`:"YOLO runtime is still loading…");return}
+ const gen=++loadGeneration;currentFilename=filename;currentModel=null;clearBoxes();
+ const modelUrl=new URL(`models/${filename}`,window.location.href).href;
+ els.modelStat.textContent=filename.replace(/\.tflite$/i,"");els.preStat.textContent=els.inferStat.textContent=els.postStat.textContent=els.wallStat.textContent="—";els.detStat.textContent="0";
+ if(modelCache.has(filename)){currentModel=modelCache.get(filename);els.deviceStat.textContent=currentModel.device||"unknown";els.loadStat.textContent="cached";els.cacheStat.textContent=String(modelCache.size);status(`${filename}: using cached LiteRT model.\nBackend: ${currentModel.device||"unknown"}`);return}
+ showLoading(filename);status(`Downloading ${filename} from the classroom site…`);
+ try{
+  const response=await fetch(modelUrl);
+  if(!response.ok)throw new Error(`HTTP ${response.status} while fetching ${modelUrl}`);
+  const blob=await response.blob();
+  const file=new File([blob],filename,{type:"application/octet-stream"});
+  if(gen!==loadGeneration)return;
+  status(`Loading ${filename} (${humanBytes(file.size)}) through LiteRT.js…`);
+  const t0=performance.now();const model=await YOLO.load(file,{device:"webgpu"});if(gen!==loadGeneration)return;const elapsed=performance.now()-t0;modelCache.set(filename,model);currentModel=model;
+ els.deviceStat.textContent=model.device||"unknown";els.loadStat.textContent=fmt(elapsed);els.cacheStat.textContent=String(modelCache.size);status(`${filename} loaded in ${elapsed.toFixed(1)} ms.\nBackend: ${model.device||"unknown"}\nModel cached for reuse.`)
+ }catch(e){if(gen===loadGeneration){currentModel=null;status(`Could not load ${filename}.\n${e?.stack||e}`)}}finally{if(gen===loadGeneration)hideLoading()}
+}
+
+els.conf.oninput=()=>els.confVal.textContent=(+els.conf.value).toFixed(2);els.iou.oninput=()=>els.iouVal.textContent=(+els.iou.value).toFixed(2);
+
+async function inferFrame(){
+ if(busy||!running||!currentModel)return;const src=currentSource();if(!src)return;busy=true;
+ try{const t0=performance.now();const results=await currentModel.predict(src,{conf:+els.conf.value,iou:+els.iou.value});const wall=performance.now()-t0;
+ const rw=+results?.width||(src.videoWidth||src.naturalWidth||src.width),rh=+results?.height||(src.videoHeight||src.naturalHeight||src.height);if(rw&&rh)setStageSize(rw,rh);drawBoxes(results);
+ const sp=results?.speed||{};els.preStat.textContent=fmt(+sp.preprocess);els.inferStat.textContent=fmt(+sp.inference);els.postStat.textContent=fmt(+sp.postprocess);els.wallStat.textContent=fmt(wall);els.detStat.textContent=String(results?.boxes?.length||0);els.deviceStat.textContent=currentModel.device||"unknown";
+ status(`${currentFilename} · ${results?.boxes?.length||0} detections\npre ${fmt(+sp.preprocess)} · infer ${fmt(+sp.inference)} · post ${fmt(+sp.postprocess)} · wall ${fmt(wall)}`)
+ }catch(e){status(`Inference error:\n${e?.stack||e}`)}finally{busy=false}
+}
+async function loop(){await inferFrame();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+
+function cycleFamily(dir){const arr=[...catalog.keys()].sort();if(!arr.length)return;let i=Math.max(0,arr.indexOf(currentFamily));i=(i+dir+arr.length)%arr.length;currentFamily=arr[i];els.modelSelect.value=currentFamily;refreshSizeSelect(currentSize||160);loadSelectedModel()}
+function cycleSize(dir){const opts=[...els.imgSize.options];if(!opts.length)return;let i=els.imgSize.selectedIndex;i=Math.max(0,Math.min(opts.length-1,i+dir));els.imgSize.selectedIndex=i;currentSize=els.imgSize.value?+els.imgSize.value:null;loadSelectedModel()}
+function adjustConf(d){els.conf.value=Math.max(.05,Math.min(.95,+els.conf.value+d)).toFixed(2);els.conf.dispatchEvent(new Event("input"))}
+window.addEventListener("keydown",e=>{if(e.key==="Escape"){running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference"}else if(e.key==="p")cycleFamily(+1);else if(e.key==="o")cycleFamily(-1);else if(e.key==="+"||e.key==="=")cycleSize(+1);else if(e.key==="-")cycleSize(-1);else if(e.key==="c")adjustConf(-.05);else if(e.key==="v")adjustConf(+.05)});
+window.addEventListener("error",e=>status(`JavaScript error:\n${e.message||e.error||e}`));window.addEventListener("unhandledrejection",e=>status(`JavaScript promise error:\n${e.reason?.stack||e.reason||e}`));
+</script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIR Sampling Depth / Quantization</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;
+  --muted:#9aa4b2;--border:#303744;--blue:#2563eb;--red:#ef4444;
+  --green:#22c55e;--orange:#f59e0b
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1150px;margin:auto;padding:20px}
+h1{font-size:25px;margin:0 0 5px}
+.sub{color:var(--muted);margin:0 0 18px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px}
+.chart{display:block;width:100%;height:290px;background:#fff;border-radius:10px}
+.chart+.chart{margin-top:14px}
+.controls{margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:12px;align-items:center}
+input[type=range]{width:100%}
+.readout{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px}
+.card .label{font-size:12px;color:var(--muted)}
+.card .value{font-size:18px;font-weight:700;margin-top:3px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.key{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:12px}
+@media(max-width:760px){
+  .controls{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .chart{height:250px}
+}
+@media(max-width:480px){.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>NIR Sampling Depth / ADC Quantization</h1>
+  <p class="sub">Quantizing one raw 220-band PP NIR spectrum at different bit depths.</p>
+
+  <section class="panel">
+    <canvas id="spectrumCanvas" class="chart" aria-label="Original and quantized raw NIR spectrum"></canvas>
+    <canvas id="errorCanvas" class="chart" aria-label="Quantization error"></canvas>
+
+    <div class="legend">
+      <span class="key"><span class="dot" style="background:#2563eb"></span>Original raw spectrum</span>
+      <span class="key"><span class="dot" style="background:#ef4444"></span>Quantized spectrum</span>
+      <span class="key"><span class="dot" style="background:#f59e0b"></span>Quantization error</span>
+    </div>
+
+    <div class="controls">
+      <input id="bits" type="range" min="1" max="16" step="1" value="8" aria-label="ADC bit depth">
+      <div id="bitLabel" class="readout">ADC depth: 8 bit</div>
+    </div>
+
+    <div class="stats">
+      <div class="card">
+        <div class="label">Quantization levels</div>
+        <div id="levelsValue" class="value">256</div>
+      </div>
+      <div class="card">
+        <div class="label">Intensity step Δ</div>
+        <div id="stepValue" class="value">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Mean absolute error</div>
+        <div id="maeValue" class="value">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Maximum error</div>
+        <div id="maxErrValue" class="value">—</div>
+      </div>
+    </div>
+
+    <div class="note">
+      Selected material pixel: row 97, column 33, mean raw intensity 1058.75.
+      The spectrum has 220 spectral bands. In this simplified model, the detector produces an
+      analogue signal related to received radiation intensity and an ADC converts that signal into
+      a finite set of digital values. Lower bit depth means fewer representable amplitude levels,
+      so the raw spectrum becomes more visibly quantized.
+      <br><br>
+      For this teaching example, the ADC range is set to the minimum and maximum intensity of this
+      selected spectrum (729.00 to 1440.00). A real instrument normally has a fixed electrical
+      input range and additional calibration, gain, noise, dark-current and saturation effects.
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const raw = [1440.0, 1438.0, 1434.0, 1429.0, 1422.0, 1415.0, 1408.0, 1403.0, 1399.0, 1397.0, 1395.0, 1396.0, 1397.0, 1397.0, 1396.0, 1394.0, 1393.0, 1393.0, 1394.0, 1395.0, 1395.0, 1394.0, 1392.0, 1391.0, 1390.0, 1390.0, 1389.0, 1387.0, 1386.0, 1384.0, 1384.0, 1385.0, 1386.0, 1386.0, 1384.0, 1383.0, 1383.0, 1382.0, 1379.0, 1373.0, 1367.0, 1360.0, 1354.0, 1348.0, 1338.0, 1321.0, 1298.0, 1269.0, 1238.0, 1206.0, 1178.0, 1154.0, 1135.0, 1117.0, 1097.0, 1073.0, 1045.0, 1015.0, 984.0, 952.0, 918.0, 884.0, 855.0, 836.0, 827.0, 826.0, 827.0, 828.0, 827.0, 826.0, 828.0, 835.0, 850.0, 875.0, 905.0, 936.0, 967.0, 996.0, 1023.0, 1046.0, 1067.0, 1086.0, 1102.0, 1118.0, 1131.0, 1142.0, 1151.0, 1158.0, 1164.0, 1170.0, 1176.0, 1180.0, 1184.0, 1185.0, 1187.0, 1187.0, 1188.0, 1188.0, 1188.0, 1188.0, 1189.0, 1188.0, 1188.0, 1186.0, 1185.0, 1183.0, 1181.0, 1179.0, 1177.0, 1175.0, 1173.0, 1168.0, 1160.0, 1147.0, 1125.0, 1093.0, 1051.0, 1006.0, 963.0, 926.0, 895.0, 869.0, 845.0, 822.0, 800.0, 780.0, 763.0, 747.0, 735.0, 729.0, 730.0, 739.0, 750.0, 759.0, 764.0, 767.0, 772.0, 779.0, 786.0, 792.0, 796.0, 799.0, 803.0, 807.0, 813.0, 820.0, 828.0, 838.0, 847.0, 857.0, 865.0, 873.0, 879.0, 886.0, 893.0, 900.0, 905.0, 909.0, 912.0, 915.0, 921.0, 928.0, 936.0, 946.0, 956.0, 966.0, 975.0, 982.0, 987.0, 992.0, 998.0, 1005.0, 1012.0, 1019.0, 1024.0, 1027.0, 1029.0, 1031.0, 1032.0, 1033.0, 1033.0, 1033.0, 1032.0, 1029.0, 1026.0, 1022.0, 1019.0, 1016.0, 1012.0, 1007.0, 1002.0, 996.0, 991.0, 985.0, 980.0, 976.0, 970.0, 964.0, 958.0, 952.0, 944.0, 933.0, 921.0, 906.0, 892.0, 877.0, 864.0, 854.0, 846.0, 842.0, 840.0, 837.0, 835.0, 833.0, 832.0, 829.0, 825.0, 819.0, 813.0, 807.0];
+const N = raw.length;
+const ADC_MIN = 729.0;
+const ADC_MAX = 1440.0;
+
+const spectrumCanvas = document.getElementById("spectrumCanvas");
+const errorCanvas = document.getElementById("errorCanvas");
+const slider = document.getElementById("bits");
+const bitLabel = document.getElementById("bitLabel");
+const levelsValue = document.getElementById("levelsValue");
+const stepValue = document.getElementById("stepValue");
+const maeValue = document.getElementById("maeValue");
+const maxErrValue = document.getElementById("maxErrValue");
+
+function setupCanvas(canvas){
+  const rect=canvas.getBoundingClientRect();
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  const w=Math.max(320,rect.width), h=Math.max(220,rect.height);
+  canvas.width=Math.round(w*dpr);
+  canvas.height=Math.round(h*dpr);
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx,w,h};
+}
+
+function geom(w,h){
+  const m={left:70,right:22,top:42,bottom:44};
+  return {m,plotW:w-m.left-m.right,plotH:h-m.top-m.bottom};
+}
+function xPx(i,g){return g.m.left+(i/(N-1))*g.plotW}
+
+function niceStep(range){
+  if(range<=0) return 1;
+  const rough=range/5;
+  const p=Math.pow(10,Math.floor(Math.log10(rough)));
+  const n=rough/p;
+  return (n<=1?1:n<=2?2:n<=5?5:10)*p;
+}
+
+function axes(ctx,w,h,title,yMin,yMax,yLabel){
+  const g=geom(w,h);
+  const yPx=v=>g.m.top+((yMax-v)/(yMax-yMin))*g.plotH;
+
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+
+  ctx.fillStyle="#111827";ctx.font="600 14px system-ui";ctx.textAlign="center";
+  ctx.fillText(title,w/2,21);
+
+  const step=niceStep(yMax-yMin);
+  const start=Math.ceil(yMin/step)*step;
+  ctx.font="11px system-ui";
+  for(let y=start;y<=yMax+1e-9;y+=step){
+    const py=yPx(y);
+    ctx.strokeStyle=Math.abs(y)<1e-12?"#94a3b8":"#e5e7eb";
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(g.m.left,py);ctx.lineTo(g.m.left+g.plotW,py);ctx.stroke();
+    ctx.fillStyle="#475569";ctx.textAlign="right";
+    ctx.fillText(Number(y.toFixed(2)).toString(),g.m.left-8,py+4);
+  }
+
+  for(const band of [1,50,100,150,200,220]){
+    const px=xPx(band-1,g);
+    ctx.strokeStyle="#e5e7eb";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(px,g.m.top);ctx.lineTo(px,g.m.top+g.plotH);ctx.stroke();
+    ctx.fillStyle="#475569";ctx.textAlign="center";
+    ctx.fillText(String(band),px,h-17);
+  }
+
+  ctx.strokeStyle="#111827";ctx.strokeRect(g.m.left,g.m.top,g.plotW,g.plotH);
+
+  ctx.fillStyle="#374151";ctx.font="12px system-ui";ctx.textAlign="center";
+  ctx.fillText("Spectral band index [-]",g.m.left+g.plotW/2,h-3);
+  ctx.save();
+  ctx.translate(16,g.m.top+g.plotH/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText(yLabel,0,0);ctx.restore();
+
+  return {g,yPx};
+}
+
+function quantize(bits){
+  const levels=Math.pow(2,bits);
+  const step=(ADC_MAX-ADC_MIN)/(levels-1);
+
+  const q=raw.map(v=>{
+    const clipped=Math.max(ADC_MIN,Math.min(ADC_MAX,v));
+    return ADC_MIN + Math.round((clipped-ADC_MIN)/step)*step;
+  });
+
+  return {levels,step,q};
+}
+
+function draw(bits){
+  const {levels,step,q}=quantize(bits);
+  const errors=q.map((v,i)=>v-raw[i]);
+  const mae=errors.reduce((s,e)=>s+Math.abs(e),0)/errors.length;
+  const maxErr=Math.max(...errors.map(Math.abs));
+
+  bitLabel.textContent=`ADC depth: ${bits} bit${bits===1?"":"s"}`;
+  levelsValue.textContent=levels.toLocaleString();
+  stepValue.textContent=step.toFixed(step<1?4:2);
+  maeValue.textContent=mae.toFixed(3);
+  maxErrValue.textContent=maxErr.toFixed(3);
+
+  // Spectrum chart.
+  {
+    const {ctx,w,h}=setupCanvas(spectrumCanvas);
+    const pad=Math.max(5,(ADC_MAX-ADC_MIN)*0.08);
+    const yMin=ADC_MIN-pad, yMax=ADC_MAX+pad;
+    const {g,yPx}=axes(ctx,w,h,`Raw NIR spectrum quantized at ${bits} bit${bits===1?"":"s"}`,
+                         yMin,yMax,"Raw intensity [a.u.]");
+
+    ctx.strokeStyle="#2563eb";ctx.lineWidth=2.2;
+    ctx.beginPath();
+    raw.forEach((v,i)=>{
+      const x=xPx(i,g), y=yPx(v);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.strokeStyle="#ef4444";ctx.lineWidth=1.7;
+    ctx.beginPath();
+    q.forEach((v,i)=>{
+      const x=xPx(i,g), y=yPx(v);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+
+  // Error chart.
+  {
+    const {ctx,w,h}=setupCanvas(errorCanvas);
+    const bound=Math.max(1,maxErr*1.2);
+    const {g,yPx}=axes(ctx,w,h,"Quantization error (quantized − original)",
+                       -bound,bound,"Error [a.u.]");
+
+    ctx.strokeStyle="#f59e0b";ctx.lineWidth=1.8;
+    ctx.beginPath();
+    errors.forEach((v,i)=>{
+      const x=xPx(i,g), y=yPx(v);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+}
+
+function update(){
+  const bits=Math.max(1,Math.min(16,Math.round(Number(slider.value)||8)));
+  draw(bits);
+}
+
+slider.addEventListener("input",update);
+
+if("ResizeObserver" in window){
+  const ro=new ResizeObserver(update);
+  ro.observe(spectrumCanvas);
+  ro.observe(errorCanvas);
+}else{
+  window.addEventListener("resize",update);
+}
+
+update();
+})();
+</script>
+</body>
+</html>

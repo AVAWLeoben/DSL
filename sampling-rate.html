@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interactive Sampling Plot</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;
+  --muted:#9aa4b2;--border:#303744;--accent:#38bdf8;--paper:#fff;
+  --blue:#2563eb;--red:#ef4444;--green:#22c55e;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+}
+.wrap{max-width:1100px;margin:auto;padding:20px}
+h1{font-size:25px;margin:0 0 5px}
+.sub{color:var(--muted);margin:0 0 18px}
+.panel{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:14px;padding:15px
+}
+.chart{
+  background:#fff;border-radius:10px;display:block;
+  width:100%;height:290px
+}
+.chart + .chart{margin-top:14px}
+.controls{
+  margin-top:16px;display:grid;grid-template-columns:1fr auto;
+  gap:12px;align-items:center
+}
+input[type=range]{width:100%}
+.readout{
+  min-width:155px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:9px;padding:9px 12px;text-align:center;font-weight:700
+}
+.stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px
+}
+.card{
+  background:var(--panel2);border:1px solid var(--border);
+  border-radius:9px;padding:10px
+}
+.card .label{font-size:12px;color:var(--muted)}
+.card .value{font-size:20px;font-weight:700;margin-top:2px}
+.note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:12px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.key{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+@media(max-width:700px){
+  .controls{grid-template-columns:1fr}
+  .readout{min-width:0}
+  .stats{grid-template-columns:1fr}
+  .chart{height:250px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Interactive Sampling Plot</h1>
+  <p class="sub">Explore how the number of samples affects the representation of a sine signal.</p>
+
+  <section class="panel">
+    <canvas id="original" class="chart" aria-label="Original sine signal"></canvas>
+    <canvas id="sampled" class="chart" aria-label="Sampled and reproduced sine signal"></canvas>
+
+    <div class="legend">
+      <span class="key"><span class="dot" style="background:#2563eb"></span>Original signal</span>
+      <span class="key"><span class="dot" style="background:#ef4444"></span>Sample points</span>
+      <span class="key"><span class="dot" style="background:#22c55e"></span>Linearly connected samples</span>
+    </div>
+
+    <div class="controls">
+      <input id="samples" type="range" min="2" max="50" step="1" value="2"
+             aria-label="Number of samples">
+      <div id="sampleLabel" class="readout">Number of Samples: 2</div>
+    </div>
+
+    <div class="stats">
+      <div class="card">
+        <div class="label">Sample count</div>
+        <div id="countValue" class="value">2</div>
+      </div>
+      <div class="card">
+        <div class="label">Signal interval</div>
+        <div class="value">0 → 4π</div>
+      </div>
+      <div class="card">
+        <div class="label">Sample spacing Δx</div>
+        <div id="spacingValue" class="value">4π</div>
+      </div>
+    </div>
+
+    <div class="note">
+      The upper graph is the continuous reference signal <b>y = sin(x)</b>.
+      The lower graph uses only the selected sample points and connects them with straight
+      line segments, matching the behavior of the MATLAB version.
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const TWO_PI = 2*Math.PI;
+const X_MAX = 4*Math.PI;
+
+const originalCanvas = document.getElementById("original");
+const sampledCanvas = document.getElementById("sampled");
+const slider = document.getElementById("samples");
+const sampleLabel = document.getElementById("sampleLabel");
+const countValue = document.getElementById("countValue");
+const spacingValue = document.getElementById("spacingValue");
+
+function setupCanvas(canvas){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const w = Math.max(320, rect.width);
+  const h = Math.max(220, rect.height);
+  canvas.width = Math.round(w*dpr);
+  canvas.height = Math.round(h*dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx,w,h};
+}
+
+function geometry(w,h){
+  const m={left:58,right:22,top:42,bottom:42};
+  return {m, plotW:w-m.left-m.right, plotH:h-m.top-m.bottom};
+}
+
+function xToPx(x,g){ return g.m.left + (x/X_MAX)*g.plotW; }
+function yToPx(y,g){ return g.m.top + ((1.25-y)/2.5)*g.plotH; }
+
+function drawAxes(ctx,w,h,title){
+  const g=geometry(w,h);
+
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,w,h);
+
+  ctx.fillStyle="#111827";
+  ctx.font="600 14px system-ui";
+  ctx.textAlign="center";
+  ctx.fillText(title,w/2,21);
+
+  // horizontal grid
+  ctx.font="11px system-ui";
+  ctx.textAlign="right";
+  for(const y of [-1,-0.5,0,0.5,1]){
+    const py=yToPx(y,g);
+    ctx.strokeStyle = y===0 ? "#94a3b8" : "#e5e7eb";
+    ctx.lineWidth = y===0 ? 1.2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(g.m.left,py);
+    ctx.lineTo(g.m.left+g.plotW,py);
+    ctx.stroke();
+    ctx.fillStyle="#475569";
+    ctx.fillText(String(y),g.m.left-8,py+4);
+  }
+
+  // x grid at 0, pi, 2pi, 3pi, 4pi
+  const xs=[
+    {x:0,label:"0"},
+    {x:Math.PI,label:"π"},
+    {x:2*Math.PI,label:"2π"},
+    {x:3*Math.PI,label:"3π"},
+    {x:4*Math.PI,label:"4π"}
+  ];
+  ctx.textAlign="center";
+  for(const item of xs){
+    const px=xToPx(item.x,g);
+    ctx.strokeStyle="#e5e7eb";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(px,g.m.top);
+    ctx.lineTo(px,g.m.top+g.plotH);
+    ctx.stroke();
+    ctx.fillStyle="#475569";
+    ctx.fillText(item.label,px,h-16);
+  }
+
+  ctx.strokeStyle="#111827";
+  ctx.lineWidth=1.2;
+  ctx.strokeRect(g.m.left,g.m.top,g.plotW,g.plotH);
+
+  return g;
+}
+
+function drawOriginal(){
+  const {ctx,w,h}=setupCanvas(originalCanvas);
+  const g=drawAxes(ctx,w,h,"Original Signal");
+
+  ctx.strokeStyle="#2563eb";
+  ctx.lineWidth=2.2;
+  ctx.beginPath();
+  const N=1200;
+  for(let i=0;i<N;i++){
+    const x=X_MAX*i/(N-1);
+    const y=Math.sin(x);
+    const px=xToPx(x,g), py=yToPx(y,g);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+}
+
+function drawSampled(n){
+  const {ctx,w,h}=setupCanvas(sampledCanvas);
+  const g=drawAxes(ctx,w,h,`Reproduced Signal with ${n} samples`);
+
+  const xs=[], ys=[];
+  for(let i=0;i<n;i++){
+    const x=X_MAX*i/(n-1);
+    xs.push(x);
+    ys.push(Math.sin(x));
+  }
+
+  // connected samples
+  ctx.strokeStyle="#22c55e";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<n;i++){
+    const px=xToPx(xs[i],g), py=yToPx(ys[i],g);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  // sample points
+  for(let i=0;i<n;i++){
+    const px=xToPx(xs[i],g), py=yToPx(ys[i],g);
+    ctx.beginPath();
+    ctx.arc(px,py,5,0,Math.PI*2);
+    ctx.fillStyle="#ef4444";
+    ctx.fill();
+    ctx.strokeStyle="#991b1b";
+    ctx.lineWidth=1;
+    ctx.stroke();
+  }
+}
+
+function formatSpacing(n){
+  if(n<=1) return "—";
+  const d = X_MAX/(n-1);
+  const ratio = 4/(n-1);
+  if(Math.abs(ratio-1)<1e-10) return "π";
+  if(Number.isInteger(ratio)) return `${ratio}π`;
+  return `${d.toFixed(3)}`;
+}
+
+function update(){
+  const n=Math.max(2,Math.min(50,Math.round(Number(slider.value)||2)));
+  sampleLabel.textContent=`Number of Samples: ${n}`;
+  countValue.textContent=String(n);
+  spacingValue.textContent=formatSpacing(n);
+  drawOriginal();
+  drawSampled(n);
+}
+
+slider.addEventListener("input",update);
+
+if("ResizeObserver" in window){
+  const ro=new ResizeObserver(update);
+  ro.observe(originalCanvas);
+  ro.observe(sampledCanvas);
+}else{
+  window.addEventListener("resize",update);
+}
+
+update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sampling Depth / Quantization Exercise</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;
+  --muted:#9aa4b2;--border:#303744;--blue:#2563eb;--red:#ef4444;--green:#22c55e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1050px;margin:auto;padding:20px}
+h1{font-size:25px;margin:0 0 5px}
+.sub{color:var(--muted);margin:0 0 18px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px}
+.chartWrap{background:#fff;border-radius:10px;overflow:hidden}
+canvas{display:block;width:100%;height:580px}
+.controls{margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:12px;align-items:center}
+input[type=range]{width:100%}
+.readout{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;text-align:center;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px}
+.card .label{font-size:12px;color:var(--muted)}
+.card .value{font-size:18px;font-weight:700;margin-top:3px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.key{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:12px}
+@media(max-width:760px){
+  .controls{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  canvas{height:460px}
+}
+@media(max-width:480px){.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sampling Depth / Quantization</h1>
+  <p class="sub">Explore how the number of representable amplitude values changes the quantization resolution.</p>
+
+  <section class="panel">
+    <div class="chartWrap">
+      <canvas id="chart" aria-label="Continuous versus representable voltage values"></canvas>
+    </div>
+
+    <div class="legend">
+      <span class="key"><span class="dot" style="background:#2563eb"></span>Continuous ideal relation</span>
+      <span class="key"><span class="dot" style="background:#ef4444"></span>Representable values</span>
+    </div>
+
+    <div class="controls">
+      <input id="samples" type="range" min="2" max="50" step="1" value="2" aria-label="Number of representable values">
+      <div id="sampleLabel" class="readout">Representable values: 2</div>
+    </div>
+
+    <div class="stats">
+      <div class="card">
+        <div class="label">Number of levels</div>
+        <div id="levelsValue" class="value">2</div>
+      </div>
+      <div class="card">
+        <div class="label">Voltage range</div>
+        <div class="value">0–5 V</div>
+      </div>
+      <div class="card">
+        <div class="label">Level spacing ΔV</div>
+        <div id="spacingValue" class="value">5.000 V</div>
+      </div>
+      <div class="card">
+        <div class="label">Equivalent bit depth</div>
+        <div id="bitsValue" class="value">1.00 bit</div>
+      </div>
+    </div>
+
+    <div class="note">
+      The blue diagonal represents all possible real values from 0 to 5 V.
+      The red crosses are the values that can actually be represented when only a finite
+      number of amplitude levels is available. Increasing the number of levels reduces the
+      quantization step size. The equivalent bit depth is shown as log₂(number of levels);
+      it is only an exact integer-bit ADC depth when the number of levels is a power of two.
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+const slider = document.getElementById("samples");
+const sampleLabel = document.getElementById("sampleLabel");
+const levelsValue = document.getElementById("levelsValue");
+const spacingValue = document.getElementById("spacingValue");
+const bitsValue = document.getElementById("bitsValue");
+
+let W=0,H=0;
+
+function resize(){
+  const rect=canvas.getBoundingClientRect();
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  W=Math.max(320,rect.width);
+  H=Math.max(360,rect.height);
+  canvas.width=Math.round(W*dpr);
+  canvas.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+
+function geom(){
+  const m={left:70,right:28,top:52,bottom:62};
+  return {m,plotW:W-m.left-m.right,plotH:H-m.top-m.bottom};
+}
+function xPx(v,g){return g.m.left+(v/5)*g.plotW}
+function yPx(v,g){return g.m.top+((5-v)/5)*g.plotH}
+
+function drawCross(x,y,size=6){
+  ctx.beginPath();
+  ctx.moveTo(x-size,y-size);ctx.lineTo(x+size,y+size);
+  ctx.moveTo(x+size,y-size);ctx.lineTo(x-size,y+size);
+  ctx.stroke();
+}
+
+function draw(){
+  if(!W||!H) return;
+  const g=geom();
+  const n=Math.max(2,Math.min(50,Math.round(Number(slider.value)||2)));
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,W,H);
+
+  // title
+  ctx.fillStyle="#111827";
+  ctx.font="600 15px system-ui";
+  ctx.textAlign="center";
+  ctx.fillText(`Represented Values with nSamples = ${n}`,W/2,25);
+
+  // grid + ticks
+  ctx.font="11px system-ui";
+  for(let v=0;v<=5;v+=0.5){
+    const x=xPx(v,g), y=yPx(v,g);
+    ctx.strokeStyle=Number.isInteger(v)?"#d1d5db":"#eef2f7";
+    ctx.lineWidth=1;
+
+    ctx.beginPath();
+    ctx.moveTo(x,g.m.top);
+    ctx.lineTo(x,g.m.top+g.plotH);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(g.m.left,y);
+    ctx.lineTo(g.m.left+g.plotW,y);
+    ctx.stroke();
+
+    if(Number.isInteger(v)){
+      ctx.fillStyle="#475569";
+      ctx.textAlign="center";
+      ctx.fillText(String(v),x,H-35);
+      ctx.textAlign="right";
+      ctx.fillText(String(v),g.m.left-10,y+4);
+    }
+  }
+
+  // axes box
+  ctx.strokeStyle="#111827";
+  ctx.lineWidth=1.2;
+  ctx.strokeRect(g.m.left,g.m.top,g.plotW,g.plotH);
+
+  // labels
+  ctx.fillStyle="#374151";
+  ctx.font="12px system-ui";
+  ctx.textAlign="center";
+  ctx.fillText("Representable Values [V]",g.m.left+g.plotW/2,H-9);
+
+  ctx.save();
+  ctx.translate(18,g.m.top+g.plotH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("Real Values [V]",0,0);
+  ctx.restore();
+
+  // ideal continuous line y=x
+  ctx.strokeStyle="#2563eb";
+  ctx.lineWidth=2.2;
+  ctx.beginPath();
+  ctx.moveTo(xPx(0,g),yPx(0,g));
+  ctx.lineTo(xPx(5,g),yPx(5,g));
+  ctx.stroke();
+
+  // sampled/representable points
+  ctx.strokeStyle="#ef4444";
+  ctx.lineWidth=2;
+  for(let i=0;i<n;i++){
+    const v=5*i/(n-1);
+    drawCross(xPx(v,g),yPx(v,g),6);
+  }
+}
+
+function update(){
+  const n=Math.max(2,Math.min(50,Math.round(Number(slider.value)||2)));
+  const spacing=5/(n-1);
+  const bits=Math.log2(n);
+
+  sampleLabel.textContent=`Representable values: ${n}`;
+  levelsValue.textContent=String(n);
+  spacingValue.textContent=`${spacing.toFixed(3)} V`;
+  bitsValue.textContent=`${bits.toFixed(2)} bit${bits===1?"":"s"}`;
+  draw();
+}
+
+slider.addEventListener("input",update);
+
+if("ResizeObserver" in window){
+  new ResizeObserver(resize).observe(canvas);
+}else{
+  window.addEventListener("resize",resize);
+}
+
+resize();
+update();
+})();
+</script>
+</body>
+</html>

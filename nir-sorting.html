@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIR Sorting & Ejection Simulation</title>
+<style>
+:root{
+ --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--border:#303744;--text:#eef1f5;
+ --muted:#9aa4b2;--accent:#38bdf8;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1380px;margin:auto;padding:18px}
+h1{font-size:24px;margin:0 0 4px}.sub{margin:0 0 14px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);gap:14px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:13px}
+#sim{width:100%;height:auto;aspect-ratio:1000/650;background:#e8eaed;border-radius:10px;display:block}
+#spec{width:100%;height:220px;background:#0c0e12;border-radius:10px;display:block}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.control{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:8px}
+.control label{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-bottom:4px}
+.control input[type=range]{width:100%}
+.group{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.group h3{font-size:13px;margin:0 0 7px;color:#dbe3ec}
+.checks{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
+button{border:1px solid var(--border);background:#2a303a;color:var(--text);border-radius:8px;padding:8px 11px;cursor:pointer}
+button:hover{filter:brightness(1.12)}
+button.primary{background:#075985;border-color:#0ea5e9}
+button.danger{background:#4c1d1d}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px}
+.stat .k{font-size:11px;color:var(--muted)}.stat .v{font-size:18px;font-weight:700;margin-top:2px}
+.status{margin-top:10px;padding:9px;background:#11151c;border:1px solid var(--border);border-radius:8px;font-size:12px;line-height:1.45}
+.legend{font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.sw{width:10px;height:10px;display:inline-block;border-radius:2px;margin-right:4px}
+.note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:10px}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+@media(max-width:560px){.controls,.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>NIR Sensor Sorting & Ejection Simulation</h1>
+<p class="sub">Browser recreation of the PE / PP / PET conveyor, NIR classification and delayed air-jet ejection workflow.</p>
+
+<div class="layout">
+  <section class="panel">
+    <canvas id="sim" aria-label="Conveyor sorting simulation"></canvas>
+    <div class="legend">
+      <span><i class="sw" style="background:#ef4444"></i>PE</span>
+      <span><i class="sw" style="background:#22c55e"></i>PP</span>
+      <span><i class="sw" style="background:#2563eb"></i>PET</span>
+      <span>Red vertical beam = NIR camera</span>
+      <span>Blue cone = air nozzle</span>
+    </div>
+    <div class="buttons">
+      <button id="addBtn" class="primary">Add NIR object</button>
+      <button id="autoBtn">Auto feed: OFF</button>
+      <button id="emitBtn">Emit nozzle</button>
+      <button id="pauseBtn">Pause</button>
+      <button id="resetBtn" class="danger">Reset</button>
+    </div>
+    <div class="note">
+      Objects fall onto the moving belt, pass beneath the NIR camera, are classified from their 220-band spectrum,
+      and target classes schedule the nozzle. Non-target material drops into the first <b>REJECT</b> bin;
+      a correctly ejected target should fly over it and drop into the adjacent <b>EJECT</b> bin.
+    </div>
+  </section>
+
+  <aside class="panel">
+    <canvas id="spec" aria-label="Live NIR spectrum"></canvas>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Camera match</div><div id="match" class="v">No Data</div></div>
+      <div class="stat"><div class="k">Cosine similarity</div><div id="similarity" class="v">—</div></div>
+      <div class="stat"><div class="k">Correct</div><div id="correct" class="v">0</div></div>
+      <div class="stat"><div class="k">Incorrect</div><div id="incorrect" class="v">0</div></div>
+    </div>
+
+    <div class="group">
+      <h3>Spawn materials</h3>
+      <div class="checks">
+        <label><input type="checkbox" class="spawnMat" value="PE" checked> PE</label>
+        <label><input type="checkbox" class="spawnMat" value="PP" checked> PP</label>
+        <label><input type="checkbox" class="spawnMat" value="PET" checked> PET</label>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3>Target classes → eject</h3>
+      <div class="checks">
+        <label><input type="checkbox" class="targetMat" value="PE"> PE</label>
+        <label><input type="checkbox" class="targetMat" value="PP" checked> PP</label>
+        <label><input type="checkbox" class="targetMat" value="PET"> PET</label>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3>Spectral processing</h3>
+      <div class="checks">
+        <label><input id="smooth" type="checkbox"> Smooth</label>
+        <label><input id="normalize" type="checkbox"> Normalize</label>
+        <label><input id="derive" type="checkbox"> 1st derivative</label>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control">
+        <label><span>Belt speed</span><b id="speedVal">320</b></label>
+        <input id="speed" type="range" min="50" max="700" value="320" step="10">
+      </div>
+      <div class="control">
+        <label><span>Similarity threshold</span><b id="thrVal">0.950</b></label>
+        <input id="threshold" type="range" min="0.80" max="1" value="0.95" step="0.001">
+      </div>
+      <div class="control">
+        <label><span>Nozzle delay</span><b id="delayVal">0.44 s</b></label>
+        <input id="delay" type="range" min="0" max="1.2" value="0.44" step="0.01">
+      </div>
+      <div class="control">
+        <label><span>Nozzle strength</span><b id="strengthVal">8000</b></label>
+        <input id="strength" type="range" min="0" max="30000" value="8000" step="250">
+      </div>
+      <div class="control">
+        <label><span>Nozzle angle</span><b id="angleVal">75°</b></label>
+        <input id="angle" type="range" min="20" max="110" value="75" step="1">
+      </div>
+      <div class="control">
+        <label><span>Nozzle spread</span><b id="spreadVal">40°</b></label>
+        <input id="spread" type="range" min="5" max="100" value="40" step="1">
+      </div>
+      <div class="control">
+        <label><span>Noise level</span><b id="noiseVal">1.0%</b></label>
+        <input id="noise" type="range" min="0" max="0.08" value="0.01" step="0.002">
+      </div>
+      <div class="control">
+        <label><span>Auto-feed interval</span><b id="feedVal">1.2 s</b></label>
+        <input id="feed" type="range" min="0.35" max="3" value="1.2" step="0.05">
+      </div>
+    </div>
+
+    <div id="status" class="status">
+      Target: PP. Built-in reference spectra are used for immediate classification.
+    </div>
+  </aside>
+</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const REF = {"PE":[995,990,983,975,969,964,958,951,944,937,930,923,916,910,905,904,907,911,915,916,918,920,924,928,931,933,934,934,935,936,937,938,939,940,941,941,941,939,936,933,928,922,916,911,907,899,888,872,852,829,802,773,742,710,679,653,633,617,600,579,556,532,507,481,454,427,399,373,349,332,324,327,342,366,398,433,469,502,532,560,584,605,624,641,657,670,681,689,695,700,705,711,715,719,722,725,727,728,729,731,733,736,739,743,746,748,749,750,749,749,747,745,743,738,733,726,718,707,693,676,657,634,609,580,549,515,480,448,426,417,420,428,432,430,421,410,403,400,401,404,408,413,419,426,433,441,449,458,467,476,486,496,506,516,528,539,548,557,564,571,577,583,588,593,597,601,602,602,600,598,596,594,590,587,582,578,574,574,580,590,600,609,615,621,625,628,630,632,635,637,638,639,638,636,635,635,635,634,632,630,628,625,622,619,616,613,609,605,601,597,594,590,585,578,571,563,555,546,537,529],"PP":[1540,1536,1531,1524,1516,1507,1500,1496,1494,1492,1490,1487,1487,1488,1489,1489,1488,1485,1483,1481,1482,1482,1482,1479,1477,1475,1474,1473,1473,1473,1476,1477,1477,1476,1476,1475,1474,1472,1469,1464,1458,1450,1441,1430,1416,1398,1372,1340,1303,1267,1235,1209,1188,1169,1147,1122,1092,1060,1026,991,956,923,896,877,867,863,863,863,862,862,865,874,891,914,942,973,1004,1036,1064,1089,1111,1130,1147,1162,1176,1188,1198,1207,1214,1221,1226,1230,1233,1235,1237,1238,1239,1240,1240,1240,1241,1241,1241,1240,1238,1237,1236,1234,1231,1227,1222,1216,1207,1191,1166,1130,1085,1036,991,953,922,895,869,845,822,801,783,769,758,753,755,763,773,781,786,789,792,799,806,812,816,819,822,827,834,842,850,859,869,878,885,891,897,904,911,918,923,928,932,935,939,945,953,964,975,986,995,1002,1007,1013,1019,1026,1033,1039,1044,1049,1052,1053,1054,1054,1054,1051,1048,1046,1043,1039,1035,1031,1026,1021,1016,1011,1006,1000,994,989,982,976,969,961,953,943,930,915,900,887,875,865,857,851,847,845,843,841,839,835,831,825,818,812],"PET":[2584,2585,2587,2591,2595,2599,2603,2604,2603,2602,2604,2608,2613,2618,2624,2629,2635,2639,2641,2642,2642,2644,2649,2655,2659,2662,2664,2667,2670,2676,2682,2688,2695,2703,2712,2719,2724,2725,2722,2717,2714,2713,2715,2721,2728,2734,2739,2744,2748,2752,2754,2757,2760,2762,2764,2766,2770,2774,2778,2783,2789,2795,2801,2805,2808,2813,2821,2828,2835,2841,2847,2853,2859,2865,2869,2874,2878,2883,2889,2895,2902,2908,2914,2919,2923,2926,2931,2937,2942,2946,2947,2949,2952,2955,2958,2962,2966,2970,2973,2975,2976,2978,2980,2983,2986,2990,2993,2994,2996,2998,3001,3003,3004,3004,3006,3009,3014,3020,3027,3034,3038,3038,3034,3029,3027,3030,3033,3031,3027,3025,3026,3029,3031,3035,3038,3042,3045,3047,3049,3052,3055,3058,3060,3061,3063,3065,3067,3069,3072,3074,3076,3077,3079,3082,3085,3089,3093,3096,3098,3102,3107,3113,3118,3121,3123,3122,3119,3115,3111,3108,3107,3105,3103,3101,3102,3103,3104,3104,3103,3103,3103,3103,3102,3102,3102,3101,3102,3103,3104,3103,3101,3099,3098,3097,3096,3095,3093,3090,3087,3083,3078,3073,3068,3063,3058,3051,3040,3022,2996,2962,2919,2871,2820,2769,2722,2688,2673,2681,2703,2725]};
+
+const colors={PE:"#ef4444",PP:"#22c55e",PET:"#2563eb"};
+const simC=document.getElementById("sim"), sctx=simC.getContext("2d");
+const specC=document.getElementById("spec"), pctx=specC.getContext("2d");
+
+const WORLD_W=1000, WORLD_H=650;
+let W=1000,H=650, DPR=1, running=true, autoFeed=false, lastFeed=0, lastT=performance.now();
+let objects=[], emissions=[], flash=0, correct=0, incorrect=0;
+let cameraState={obj:null,raw:null,proc:null,match:null,sim:null};
+let nextId=1;
+
+function vals(){
+ return {
+  speed:+document.getElementById("speed").value,
+  threshold:+document.getElementById("threshold").value,
+  delay:+document.getElementById("delay").value,
+  strength:+document.getElementById("strength").value,
+  angle:+document.getElementById("angle").value,
+  spread:+document.getElementById("spread").value,
+  noise:+document.getElementById("noise").value,
+  feed:+document.getElementById("feed").value
+ };
+}
+function checked(cls){return [...document.querySelectorAll(cls+":checked")].map(e=>e.value)}
+function resize(){
+ const r=simC.getBoundingClientRect();DPR=Math.max(1,devicePixelRatio||1);W=r.width;H=r.height;
+ simC.width=Math.round(W*DPR);simC.height=Math.round(H*DPR);sctx.setTransform(DPR,0,0,DPR,0,0);
+ const q=specC.getBoundingClientRect();specC.width=Math.round(q.width*DPR);specC.height=Math.round(q.height*DPR);pctx.setTransform(DPR,0,0,DPR,0,0);
+}
+new ResizeObserver(resize).observe(simC); new ResizeObserver(resize).observe(specC);
+
+function randn(){
+ let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();
+ return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function noisySpectrum(type, frac){
+ const r=REF[type], mx=Math.max(...r), sigma=frac*mx;
+ return r.map(x=>x+randn()*sigma);
+}
+function smoothSGish(a){
+ // lightweight symmetric 15-point moving polynomial-like smoother for browser portability
+ const out=new Array(a.length);
+ for(let i=0;i<a.length;i++){
+   let s=0,w=0;
+   for(let k=-7;k<=7;k++){const j=Math.max(0,Math.min(a.length-1,i+k));const wt=8-Math.abs(k);s+=a[j]*wt;w+=wt}
+   out[i]=s/w;
+ }
+ return out;
+}
+function normalize(a){
+ const m=a.reduce((s,x)=>s+x,0)/a.length;
+ const sd=Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/a.length)+1e-9;
+ return a.map(x=>(x-m)/sd);
+}
+function derivative(a){
+ const o=new Array(a.length);
+ o[0]=a[1]-a[0];o[a.length-1]=a[a.length-1]-a[a.length-2];
+ for(let i=1;i<a.length-1;i++)o[i]=(a[i+1]-a[i-1])/2;
+ return o;
+}
+function processSpectrum(a){
+ let x=a.slice();
+ if(document.getElementById("smooth").checked)x=smoothSGish(x);
+ if(document.getElementById("normalize").checked)x=normalize(x);
+ if(document.getElementById("derive").checked)x=derivative(smoothSGish(x));
+ return x;
+}
+function refProcessed(type){
+ return processSpectrum(REF[type]);
+}
+function cosine(a,b){
+ let ab=0,aa=0,bb=0;for(let i=0;i<a.length;i++){ab+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i]}
+ return ab/(Math.sqrt(aa*bb)+1e-8);
+}
+function classify(spec){
+ let best="Not Classified",bs=-1;
+ for(const t of ["PE","PP","PET"]){
+   const s=cosine(refProcessed(t),spec);
+   if(s>bs){bs=s;best=t}
+ }
+ if(bs<vals().threshold)best="Not Classified";
+ return {best,sim:bs};
+}
+
+function spawn(){
+ const mats=checked(".spawnMat");
+ if(!mats.length)return;
+ const type=mats[Math.floor(Math.random()*mats.length)];
+ objects.push({
+  id:nextId++,type,x:75,y:180+Math.random()*35,vx:0,vy:0,w:32+Math.random()*24,h:30+Math.random()*22,
+  onBelt:false,classified:false,ejectScheduled:false,ejected:false,age:0,
+  collectedBin:null,scored:false,settledAt:null
+ });
+}
+function scheduleEject(obj){
+ if(obj.ejectScheduled)return;
+ obj.ejectScheduled=true;
+ emissions.push({at:performance.now()/1000+vals().delay,objId:obj.id});
+}
+function emit(targetId=null){
+ const v=vals(), ang=v.angle*Math.PI/180;
+ const nx=520,ny=500, dx=Math.cos(ang),dy=-Math.sin(ang),spread=v.spread*Math.PI/180;
+ flash=0.12;
+ for(const o of objects){
+  if(targetId!==null && o.id!==targetId) continue;
+  const tx=o.x-nx,ty=o.y-ny,d=Math.hypot(tx,ty);
+  if(d>150||d<1)continue;
+  const dot=(tx/d)*dx+(ty/d)*dy;
+  const a=Math.acos(Math.max(-1,Math.min(1,dot)));
+  if(a<=spread/2){
+   const scale=Math.max(.1,1-d/150);
+   // Convert the Pymunk-like strength value into a visible browser velocity impulse.
+   const impulse=v.strength*scale*0.25;
+   o.vx+=dx*impulse;
+   o.vy+=dy*impulse;
+   o.ejected=true;
+  }
+ }
+}
+function update(dt,now){
+ const v=vals();
+ if(autoFeed && now-lastFeed>v.feed){spawn();lastFeed=now}
+
+ // delayed emissions
+ for(let i=emissions.length-1;i>=0;i--){
+   if(now>=emissions[i].at){emit(emissions[i].objId);emissions.splice(i,1)}
+ }
+ flash=Math.max(0,flash-dt);
+
+ // Physics. Belt top at y=405 from x 50..560
+ const beltY=405;
+ for(const o of objects){
+   o.age+=dt;
+   o.vy+=900*dt;
+   o.x+=o.vx*dt;o.y+=o.vy*dt;
+
+   const bottom=o.y+o.h/2;
+   if(!o.collectedBin && o.x>=45 && o.x<=565 && bottom>=beltY && bottom<=beltY+35 && o.vy>=0){
+     o.y=beltY-o.h/2;o.vy=0;o.onBelt=true;
+     if(!o.ejected)o.vx=v.speed;
+   } else if(o.ejected && !o.collectedBin){
+     o.vx*=Math.pow(.995,dt*60);
+   }
+
+   // Camera sensing region around x=400 while on belt
+   if(o.onBelt && Math.abs(o.x-400)<o.w/2+5 && !o.classified){
+     const raw=noisySpectrum(o.type,v.noise), proc=processSpectrum(raw), c=classify(proc);
+     cameraState={obj:o,raw,proc,match:c.best,sim:c.sim};
+     o.classified=true;
+     if(checked(".targetMat").includes(c.best)) scheduleEject(o);
+   }
+ }
+
+ // camera clears if no recently visible object
+ const visible=objects.find(o=>o.onBelt && Math.abs(o.x-400)<45);
+ if(!visible && cameraState.obj && Math.abs(cameraState.obj.x-400)>75){
+   cameraState={obj:null,raw:null,proc:null,match:null,sim:null};
+ }
+
+ // Physical collection bins beside the end of the conveyor.
+ // Objects are counted only after they have visibly dropped through a bin mouth.
+ const rejectBin={x:565,y:465,w:145,h:110};
+ const ejectBin ={x:735,y:465,w:165,h:110};
+ for(let i=objects.length-1;i>=0;i--){
+   const o=objects[i];
+   let bin=null;
+   const falling=o.vy>0;
+   const insideRejectX=o.x>rejectBin.x && o.x<rejectBin.x+rejectBin.w;
+   const insideEjectX=o.x>ejectBin.x && o.x<ejectBin.x+ejectBin.w;
+   const insideMouthY=o.y>rejectBin.y+24;
+
+   if(!o.collectedBin){
+     if(falling && insideRejectX && insideMouthY && o.y<rejectBin.y+rejectBin.h) bin="Reject";
+     if(falling && insideEjectX  && insideMouthY && o.y<ejectBin.y+ejectBin.h) bin="Eject";
+
+     if(bin){
+       o.collectedBin=bin;
+       if(!o.scored){
+         const target=checked(".targetMat").includes(o.type);
+         const ok=(target && bin==="Eject")||(!target && bin==="Reject");
+         if(ok)correct++;else incorrect++;
+         o.scored=true;
+       }
+     }
+   }
+
+   // Once inside a bin, keep the object visible and let it settle on the bottom.
+   if(o.collectedBin){
+     const b=o.collectedBin==="Reject"?rejectBin:ejectBin;
+     const floorY=b.y+b.h-o.h/2-7;
+     const left=b.x+o.w/2+7, right=b.x+b.w-o.w/2-7;
+     o.x=Math.max(left,Math.min(right,o.x));
+     o.vx*=Math.pow(0.82,dt*60);
+
+     if(o.y>=floorY){
+       o.y=floorY;
+       o.vy=0;
+       o.vx*=0.7;
+       if(o.settledAt===null)o.settledAt=now;
+       // Leave the landed object visible long enough for students to inspect it.
+       if(now-o.settledAt>1.6){
+         objects.splice(i,1);
+         continue;
+       }
+     }
+   } else if(o.x<-100||o.x>WORLD_W+250||o.y>WORLD_H+250){
+     objects.splice(i,1);
+   }
+ }
+ updateUI();
+}
+function updateUI(){
+ document.getElementById("match").textContent=cameraState.match||"No Data";
+ document.getElementById("similarity").textContent=cameraState.sim==null?"—":cameraState.sim.toFixed(3);
+ document.getElementById("correct").textContent=correct;
+ document.getElementById("incorrect").textContent=incorrect;
+ const targets=checked(".targetMat");
+ document.getElementById("status").textContent=
+  `Target${targets.length===1?"":"s"}: ${targets.join(", ")||"none"}. `+
+  `Scheduled air pulses: ${emissions.length}. Objects visible: ${objects.length}. `+
+  `Landed: ${objects.filter(o=>o.collectedBin).length}.`;
+}
+
+function roundedRect(ctx,x,y,w,h,r,fill,stroke){
+ ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}
+}
+function drawBin(ctx,x,y,w,h,label,fill){
+ ctx.fillStyle=fill;
+ ctx.globalAlpha=.92;
+ ctx.fillRect(x,y+14,w,h-14);
+ ctx.globalAlpha=1;
+ ctx.strokeStyle="#111827";
+ ctx.lineWidth=5;
+ ctx.beginPath();
+ ctx.moveTo(x,y+6);ctx.lineTo(x,y+h);ctx.lineTo(x+w,y+h);ctx.lineTo(x+w,y+6);
+ ctx.stroke();
+ ctx.strokeStyle="#6b7280";ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(x+8,y+12);ctx.lineTo(x+w-8,y+12);ctx.stroke();
+ ctx.fillStyle="#fff";ctx.font="bold 17px system-ui";ctx.textAlign="center";
+ ctx.fillText(label,x+w/2,y+h-20);
+}
+function draw(){
+ sctx.clearRect(0,0,W,H);sctx.fillStyle="#e8eaed";sctx.fillRect(0,0,W,H);
+ sctx.save();
+ const worldScale=Math.min(W/WORLD_W,H/WORLD_H);
+ const worldOffsetX=(W-WORLD_W*worldScale)/2;
+ const worldOffsetY=(H-WORLD_H*worldScale)/2;
+ sctx.translate(worldOffsetX,worldOffsetY);
+ sctx.scale(worldScale,worldScale);
+
+ // Camera
+ const camX=400,camY=90;
+ sctx.strokeStyle="#dc2626";sctx.lineWidth=2;sctx.beginPath();sctx.moveTo(camX,camY);sctx.lineTo(camX,405);sctx.stroke();
+ sctx.fillStyle="#111827";sctx.fillRect(camX-65,camY-30,130,48);
+ sctx.strokeStyle="#fff";sctx.strokeRect(camX-65,camY-30,130,48);
+ sctx.fillStyle="#fff";sctx.font="13px system-ui";sctx.textAlign="center";
+ sctx.fillText("NIR CAMERA",camX,camY-12);
+ sctx.fillText(cameraState.match?`${cameraState.match} (${cameraState.sim.toFixed(3)})`:"No Data",camX,camY+5);
+
+ // Conveyor
+ sctx.strokeStyle="#555";sctx.lineWidth=12;sctx.beginPath();sctx.moveTo(50,405);sctx.lineTo(560,405);sctx.stroke();
+ sctx.strokeStyle="#777";sctx.lineWidth=10;sctx.beginPath();sctx.moveTo(50,465);sctx.lineTo(560,465);sctx.stroke();
+ for(const x of [60,550]){
+  sctx.fillStyle="#fde047";sctx.beginPath();sctx.arc(x,435,34,0,Math.PI*2);sctx.fill();
+  sctx.fillStyle="#111";sctx.beginPath();sctx.arc(x,435,12,0,Math.PI*2);sctx.fill();
+ }
+ sctx.fillStyle="#4b5563";sctx.font="13px system-ui";sctx.textAlign="left";sctx.fillText("Conveyor",65,495);
+
+ // Nozzle + cone
+ const v=vals(),nx=520,ny=500,a=v.angle*Math.PI/180,sp=v.spread*Math.PI/180,rad=150;
+ const a1=a-sp/2,a2=a+sp/2;
+ sctx.fillStyle="rgba(37,99,235,.10)";sctx.beginPath();sctx.moveTo(nx,ny);
+ sctx.lineTo(nx+Math.cos(a1)*rad,ny-Math.sin(a1)*rad);
+ sctx.arc(nx,ny,rad,-a1,-a2,true);sctx.closePath();sctx.fill();
+ sctx.strokeStyle="#1d4ed8";sctx.lineWidth=1.5;
+ for(const aa of [a1,a2]){sctx.beginPath();sctx.moveTo(nx,ny);sctx.lineTo(nx+Math.cos(aa)*rad,ny-Math.sin(aa)*rad);sctx.stroke()}
+ sctx.fillStyle=flash>0?"#ef4444":"#2563eb";sctx.beginPath();sctx.arc(nx,ny,flash>0?10:6,0,Math.PI*2);sctx.fill();
+ sctx.fillStyle="#1e3a8a";sctx.font="12px system-ui";sctx.fillText("Air nozzle",535,518);
+
+ // Open-top collection bins beside the conveyor.
+ drawBin(sctx,565,465,145,110,"REJECT","#b91c1c");
+ drawBin(sctx,735,465,165,110,"EJECT","#111827");
+
+ // objects
+ for(const o of objects){
+  sctx.save();sctx.translate(o.x,o.y);
+  sctx.fillStyle=colors[o.type];sctx.strokeStyle="#111";sctx.lineWidth=2;
+  sctx.fillRect(-o.w/2,-o.h/2,o.w,o.h);sctx.strokeRect(-o.w/2,-o.h/2,o.w,o.h);
+  sctx.fillStyle="#111";sctx.font=`bold ${Math.max(10,Math.min(15,o.h/3))}px system-ui`;sctx.textAlign="center";sctx.textBaseline="middle";
+  sctx.fillText(o.type,0,0);sctx.restore();
+ }
+
+ // score overlay
+ sctx.fillStyle="#111827";sctx.font="bold 14px system-ui";sctx.textAlign="left";
+ sctx.fillText(`Correct: ${correct}   Incorrect: ${incorrect}`,15,25);
+
+ sctx.restore();
+ drawSpectrum();
+}
+function drawSpectrum(){
+ const w=specC.getBoundingClientRect().width,h=specC.getBoundingClientRect().height;
+ pctx.clearRect(0,0,w,h);pctx.fillStyle="#0c0e12";pctx.fillRect(0,0,w,h);
+ const m={l:38,r:12,t:25,b:25},pw=w-m.l-m.r,ph=h-m.t-m.b;
+ pctx.strokeStyle="#2b3340";pctx.lineWidth=1;
+ for(let i=0;i<=5;i++){const x=m.l+i*pw/5;pctx.beginPath();pctx.moveTo(x,m.t);pctx.lineTo(x,m.t+ph);pctx.stroke()}
+ for(let i=0;i<=4;i++){const y=m.t+i*ph/4;pctx.beginPath();pctx.moveTo(m.l,y);pctx.lineTo(m.l+pw,y);pctx.stroke()}
+ pctx.fillStyle="#dbe3ec";pctx.font="12px system-ui";pctx.textAlign="left";pctx.fillText("Live processed NIR spectrum (220 bands)",8,15);
+ const a=cameraState.proc;
+ if(!a){pctx.fillStyle="#ef4444";pctx.fillText("No Data",w/2-25,h/2);return}
+ const mn=Math.min(...a),mx=Math.max(...a),rg=Math.max(1e-9,mx-mn);
+ pctx.strokeStyle="#22c55e";pctx.lineWidth=2;pctx.beginPath();
+ a.forEach((v,i)=>{const x=m.l+i/(a.length-1)*pw,y=m.t+(1-(v-mn)/rg)*ph;if(i)pctx.lineTo(x,y);else pctx.moveTo(x,y)});
+ pctx.stroke();
+ pctx.fillStyle="#94a3b8";pctx.font="10px system-ui";pctx.fillText("1",m.l,h-8);pctx.textAlign="right";pctx.fillText("220",m.l+pw,h-8);
+}
+
+function bindRange(id,fmt){
+ const el=document.getElementById(id),out=document.getElementById(id==="threshold"?"thrVal":id+"Val");
+ const f=()=>{out.textContent=fmt(+el.value);updateUI()};el.addEventListener("input",f);f();
+}
+bindRange("speed",v=>v.toFixed(0));
+bindRange("threshold",v=>v.toFixed(3));
+bindRange("delay",v=>v.toFixed(2)+" s");
+bindRange("strength",v=>v.toFixed(0));
+bindRange("angle",v=>v.toFixed(0)+"°");
+bindRange("spread",v=>v.toFixed(0)+"°");
+bindRange("noise",v=>(v*100).toFixed(1)+"%");
+bindRange("feed",v=>v.toFixed(2).replace(/0$/,"")+" s");
+
+document.getElementById("addBtn").onclick=spawn;
+document.getElementById("autoBtn").onclick=e=>{autoFeed=!autoFeed;e.currentTarget.textContent=`Auto feed: ${autoFeed?"ON":"OFF"}`};
+document.getElementById("emitBtn").onclick=()=>emit(null);
+document.getElementById("pauseBtn").onclick=e=>{running=!running;e.currentTarget.textContent=running?"Pause":"Resume"};
+document.getElementById("resetBtn").onclick=()=>{objects=[];emissions=[];correct=incorrect=0;cameraState={obj:null,raw:null,proc:null,match:null,sim:null};updateUI()};
+for(const e of document.querySelectorAll("input[type=checkbox]"))e.addEventListener("change",()=>{cameraState={obj:null,raw:null,proc:null,match:null,sim:null};updateUI()});
+
+function frame(t){
+ const now=t/1000,dt=Math.min(.035,(t-lastT)/1000||0);lastT=t;
+ if(running)update(dt,now);draw();requestAnimationFrame(frame)
+}
+resize();updateUI();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

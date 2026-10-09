@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Synthetic Conveyor Image Analysis Lab</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;
+  --muted:#98a2b3;--border:#303744;--accent:#38bdf8;--ok:#22c55e;--bad:#ef4444;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1250px;margin:auto;padding:18px}
+h1{font-size:25px;margin:0 0 5px}.sub{color:var(--muted);margin:0 0 14px}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.tab{background:#252a33;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer}
+.tab.active{background:#075985;border-color:#0ea5e9}
+.panel{display:none;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+.panel.active{display:block}
+.grid2{display:grid;grid-template-columns:minmax(320px,1fr) minmax(320px,1fr);gap:13px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:11px}
+.card h3{font-size:14px;margin:0 0 8px}
+canvas.preview{width:100%;height:auto;aspect-ratio:312/150;background:#000;border-radius:6px;image-rendering:pixelated}
+canvas.chart{width:100%;height:320px;background:#fff;border-radius:8px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+label{font-size:13px;color:var(--muted)}
+input[type=range]{width:240px;max-width:100%}
+select,button{background:#2a303a;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 9px}
+button{cursor:pointer} button:hover{filter:brightness(1.12)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
+.stat{background:#11151c;border:1px solid var(--border);border-radius:8px;padding:9px}
+.stat .k{font-size:11px;color:var(--muted)}.stat .v{font-size:20px;font-weight:700;margin-top:2px}
+.note{font-size:12px;line-height:1.5;color:var(--muted);margin-top:9px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.sw{display:inline-block;width:10px;height:10px;margin-right:4px;border-radius:2px}
+.badge{display:inline-block;background:#11151c;border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:#dbe4ee;font-size:12px}
+@media(max-width:850px){.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Synthetic Conveyor Image Analysis Lab</h1>
+<p class="sub">Standalone browser recreation of the MATLAB PNG/JPEG, color-counting, belt-occupation and load-distribution exercises. No image files are required.</p>
+
+<div class="tabs">
+  <button class="tab active" data-tab="p1">P1 · PNG vs JPEG</button>
+  <button class="tab" data-tab="p2">P2 · Colored Pixels</button>
+  <button class="tab" data-tab="p3">P3 · Belt Occupation</button>
+  <button class="tab" data-tab="p4">P4 · Load Distribution</button>
+</div>
+
+<section id="p1" class="panel active">
+ <div class="grid2">
+  <div class="card">
+   <h3>Synthetic classified image — lossless reference</h3>
+   <canvas id="p1png" class="preview" width="312" height="150"></canvas>
+   <div class="stats">
+    <div class="stat"><div class="k">Number of unique RGB colors</div><div id="pngUnique" class="v">—</div></div>
+    <div class="stat"><div class="k">Format concept</div><div class="v">PNG</div></div>
+    <div class="stat"><div class="k">Exact class colors</div><div class="v">Yes</div></div>
+   </div>
+   <div class="note"><b>Most frequent RGB colors:</b> <span id="pngValues">—</span></div>
+   <div class="note"><b>Color frequencies:</b> <span id="pngValueCounts">—</span></div>
+  </div>
+  <div class="card">
+   <h3>Same image after JPEG compression</h3>
+   <canvas id="p1jpg" class="preview" width="312" height="150"></canvas>
+   <div class="controls">
+    <label>JPEG quality <span id="jpegQLabel" class="badge">55%</span></label>
+    <input id="jpegQ" type="range" min="10" max="100" step="5" value="55">
+   </div>
+   <div class="stats">
+    <div class="stat"><div class="k">Number of unique RGB colors</div><div id="jpgUnique" class="v">—</div></div>
+    <div class="stat"><div class="k">Changed pixels</div><div id="jpgChanged" class="v">—</div></div>
+    <div class="stat"><div class="k">Exact class colors</div><div id="exactAfterJpg" class="v">—</div></div>
+   </div>
+   <div class="note"><b>Most frequent RGB colors:</b> <span id="jpgValues">—</span></div>
+   <div class="note"><b>Color frequencies:</b> <span id="jpgValueCounts">—</span></div>
+  </div>
+ </div>
+ <div class="note">
+  For this version, P1 counts distinct RGB pixel colors. Each unique color is one exact (R,G,B) triplet. This makes the effect of JPEG compression on a classified image directly visible: a lossless image contains only the intended class colors plus black background, while JPEG introduces many additional RGB combinations.
+  JPEG is lossy, so exact RGB class values are altered near edges and blocks. Depending on image content and quality, compression may create
+  more or fewer unique channel values; the important observation is that exact classified colors are no longer preserved.
+ </div>
+</section>
+
+<section id="p2" class="panel">
+ <div class="grid2">
+  <div class="card">
+   <h3>One generated classified frame</h3>
+   <canvas id="p2preview" class="preview" width="312" height="150"></canvas>
+   <div class="controls">
+    <label>Recording <span id="frameLabel" class="badge">1 / 700</span></label>
+    <input id="frameSlider" type="range" min="0" max="699" value="0">
+   </div>
+   <div class="controls">
+    <label>Count color</label>
+    <select id="colorSelect"></select>
+   </div>
+   <div class="stats">
+    <div class="stat"><div class="k">Colored pixels</div><div id="colorPixels" class="v">—</div></div>
+    <div class="stat"><div class="k">Frame percentage</div><div id="colorPercent" class="v">—</div></div>
+    <div class="stat"><div class="k">Mean over all frames</div><div id="colorMean" class="v">—</div></div>
+   </div>
+  </div>
+  <div class="card">
+   <h3>Percentage over all generated recordings — selected material</h3>
+   <canvas id="p2chart" class="chart"></canvas>
+   <div class="controls">
+    <label><input id="smoothP2" type="checkbox" checked> Moving mean (window 100)</label>
+   </div>
+  </div>
+ </div>
+ <div class="card" style="margin-top:13px">
+   <h3>Percentage over all generated recordings — all materials</h3>
+   <canvas id="p2allChart" class="chart"></canvas>
+   <div class="controls">
+    <label><input id="smoothP2All" type="checkbox" checked> Moving mean (window 100)</label>
+   </div>
+ </div>
+ <div id="colorLegend" class="legend"></div>
+</section>
+
+<section id="p3" class="panel">
+ <div class="grid2">
+  <div class="card">
+   <h3>Binary mask: non-black = belt material</h3>
+   <canvas id="maskPreview" class="preview" width="312" height="150"></canvas>
+   <div class="stats">
+    <div class="stat"><div class="k">Detected objects</div><div id="objCount" class="v">—</div></div>
+    <div class="stat"><div class="k">Occupied pixels</div><div id="occPixels" class="v">—</div></div>
+    <div class="stat"><div class="k">Occupation density</div><div id="occPct" class="v">—</div></div>
+   </div>
+   <div class="note">
+    As in the MATLAB example, black is treated as conveyor background and every non-black pixel is treated as material.
+    Objects are placed irregularly with a small separation gap, so connected-component count still approximately corresponds to the generated object count without forcing them onto a regular grid.
+   </div>
+  </div>
+  <div class="card">
+   <h3>Throughput — objects per recording</h3>
+   <canvas id="throughputChart" class="chart"></canvas>
+   <div class="controls"><label><input id="smoothThroughput" type="checkbox" checked> Moving mean (window 70)</label></div>
+  </div>
+ </div>
+ <div class="card" style="margin-top:13px">
+   <h3>Belt occupation density</h3>
+   <canvas id="occupationChart" class="chart"></canvas>
+   <div class="controls"><label><input id="smoothOccupation" type="checkbox" checked> Moving mean (window 70)</label></div>
+ </div>
+</section>
+
+<section id="p4" class="panel">
+ <div class="grid2">
+  <div class="card">
+   <h3>12 vertical load zones</h3>
+   <canvas id="p4preview" class="preview" width="312" height="150"></canvas>
+   <div class="note">
+    The image width is intentionally 312 pixels, matching the MATLAB script. Red lines mark the 12 vertical divisions.
+    Each object's exact rectangular pixel overlap with each zone is accumulated over all 700 frames. The generator uses drifting loading hotspots, so the resulting distribution is intentionally non-uniform.
+   </div>
+  </div>
+  <div class="card">
+   <h3>Total occupied pixels per zone</h3>
+   <canvas id="quadChart" class="chart"></canvas>
+  </div>
+ </div>
+</section>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const W=312,H=150,N=700,DAY=100;
+const classes=[
+ {name:"Red (PET)",short:"PET",rgb:[255,0,0]},
+ {name:"Green (PE)",short:"PE",rgb:[0,255,0]},
+ {name:"Blue (PMMA)",short:"PMMA",rgb:[0,0,255]},
+ {name:"Yellow (TPU)",short:"TPU",rgb:[255,255,0]},
+ {name:"Cyan (LLDPE)",short:"LLDPE",rgb:[0,255,255]},
+ {name:"Magenta (PS)",short:"PS",rgb:[255,0,255]},
+ {name:"Gray (HDPE)",short:"HDPE",rgb:[128,128,128]}
+];
+const cssColor=c=>`rgb(${c.rgb[0]},${c.rgb[1]},${c.rgb[2]})`;
+const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+let seed=2025;
+function rnd(){seed=(1664525*seed+1013904223)>>>0;return seed/4294967296}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+
+function rectGap(a,b,pad=4){
+ return !(a.x+a.w+pad<b.x || b.x+b.w+pad<a.x || a.y+a.h+pad<b.y || b.y+b.h+pad<a.y);
+}
+function randNormal(){
+ let u=0,v=0;
+ while(!u)u=rnd(); while(!v)v=rnd();
+ return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function generateDataset(){
+ const frames=[];
+
+ for(let i=0;i<N;i++){
+   const day=Math.floor(i/DAY), phase=(i%DAY)/DAY;
+
+   // Weekly throughput variation.
+   let base=11 + 3*Math.sin(phase*Math.PI) + 1.5*Math.sin((i/47)*Math.PI*2);
+   if(day===2) base-=2.2;
+   if(day===5) base+=2.0;
+   if(day===6) base-=1.2;
+   const count=clamp(Math.round(base+(rnd()-.5)*4),3,21);
+
+   // Intentionally non-uniform belt loading.
+   // Two drifting hotspots make P4 useful: material is not spread evenly across x.
+   const centerA = 70 + 30*Math.sin(i/85);
+   const centerB = 220 + 45*Math.sin(i/120 + 1.2);
+   const weightA = 0.58 + 0.18*Math.sin(i/140);
+   const objs=[];
+
+   for(let k=0;k<count;k++){
+     const c=Math.floor(rnd()*classes.length);
+     const w=10+Math.floor(rnd()*15), h=9+Math.floor(rnd()*15);
+
+     let placed=false;
+     for(let attempt=0;attempt<70 && !placed;attempt++){
+       let cx;
+
+       // Mostly clustered loading, with some uniformly distributed material.
+       if(rnd()<0.82){
+         const center = rnd()<weightA ? centerA : centerB;
+         cx = center + randNormal()*34;
+       }else{
+         cx = 15 + rnd()*(W-30);
+       }
+
+       // Vertical placement is random rather than slot-based.
+       const cy = 12 + rnd()*(H-24);
+       const candidate={
+         x:clamp(Math.round(cx-w/2),1,W-w-1),
+         y:clamp(Math.round(cy-h/2),1,H-h-1),
+         w,h,c
+       };
+
+       // Keep a small gap so P3 connected-component counting still makes sense,
+       // but do not force a regular grid.
+       if(!objs.some(o=>rectGap(candidate,o,3))){
+         objs.push(candidate);
+         placed=true;
+       }
+     }
+
+     // If the frame is crowded, allow a final less-regular placement rather than
+     // returning to a lattice/slot pattern.
+     if(!placed){
+       for(let attempt=0;attempt<40 && !placed;attempt++){
+         const candidate={
+           x:1+Math.floor(rnd()*Math.max(1,W-w-2)),
+           y:1+Math.floor(rnd()*Math.max(1,H-h-2)),
+           w,h,c
+         };
+         if(!objs.some(o=>rectGap(candidate,o,1))){
+           objs.push(candidate);
+           placed=true;
+         }
+       }
+     }
+   }
+   frames.push({objs});
+ }
+ return frames;
+}
+const frames=generateDataset();
+
+function frameStats(frame){
+ const colorPx=new Array(classes.length).fill(0);
+ const quads=new Array(12).fill(0);
+ let occupied=0;
+ for(const o of frame.objs){
+   const area=o.w*o.h; occupied+=area;colorPx[o.c]+=area;
+   for(let q=0;q<12;q++){
+     const q0=Math.round(q*W/12), q1=Math.round((q+1)*W/12);
+     const overlap=Math.max(0,Math.min(o.x+o.w,q1)-Math.max(o.x,q0));
+     if(overlap>0)quads[q]+=overlap*o.h;
+   }
+ }
+ return {colorPx,occupied,objects:frame.objs.length,quads};
+}
+const stats=frames.map(frameStats);
+const totalPx=W*H;
+const seriesColor=classes.map((_,c)=>stats.map(s=>100*s.colorPx[c]/totalPx));
+const seriesThroughput=stats.map(s=>s.objects);
+const seriesOccupation=stats.map(s=>100*s.occupied/totalPx);
+const quadTotals=new Array(12).fill(0);
+stats.forEach(s=>s.quads.forEach((v,i)=>quadTotals[i]+=v));
+
+function movingMean(a,win){
+ const out=new Array(a.length),prefix=[0];
+ for(let i=0;i<a.length;i++)prefix.push(prefix[i]+a[i]);
+ const left=Math.floor((win-1)/2),right=win-1-left;
+ for(let i=0;i<a.length;i++){
+   const a0=Math.max(0,i-left),b0=Math.min(a.length-1,i+right);
+   out[i]=(prefix[b0+1]-prefix[a0])/(b0-a0+1);
+ }
+ return out;
+}
+
+function drawFrame(canvas,frame,{mask=false,quadrants=false}={}){
+ const ctx=canvas.getContext("2d");
+ ctx.clearRect(0,0,W,H);ctx.fillStyle="#000";ctx.fillRect(0,0,W,H);
+ for(const o of frame.objs){
+   ctx.fillStyle=mask?"#fff":cssColor(classes[o.c]);
+   ctx.fillRect(o.x,o.y,o.w,o.h);
+ }
+ if(quadrants){
+   ctx.strokeStyle="#ef4444";ctx.lineWidth=1;
+   for(let q=1;q<12;q++){
+     const x=Math.round(q*W/12)+.5;
+     ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+   }
+ }
+}
+
+function setupChart(canvas){
+ const r=canvas.getBoundingClientRect(),dpr=Math.max(1,devicePixelRatio||1);
+ canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);
+ const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+ return {ctx,w:r.width,h:r.height};
+}
+function niceRange(min,max){
+ if(min===max){min-=1;max+=1}
+ const pad=(max-min)*.08;return [min-pad,max+pad];
+}
+function lineChart(canvas,data,opts={}){
+ const {ctx,w,h}=setupChart(canvas),m={l:53,r:18,t:30,b:42},pw=w-m.l-m.r,ph=h-m.t-m.b;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+ const [mn,mx]=niceRange(opts.min??Math.min(...data),opts.max??Math.max(...data));
+ const xp=i=>m.l+i/(data.length-1)*pw,yp=v=>m.t+(mx-v)/(mx-mn)*ph;
+ ctx.strokeStyle="#e5e7eb";ctx.lineWidth=1;ctx.fillStyle="#475569";ctx.font="10px system-ui";
+ for(let j=0;j<=5;j++){const y=m.t+j*ph/5,v=mx-j*(mx-mn)/5;ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(m.l+pw,y);ctx.stroke();ctx.textAlign="right";ctx.fillText(v.toFixed(opts.decimals??1),m.l-7,y+3)}
+ for(let d=0;d<=7;d++){const x=m.l+d*pw/7;ctx.beginPath();ctx.moveTo(x,m.t);ctx.lineTo(x,m.t+ph);ctx.stroke()}
+ ctx.strokeStyle=opts.color||"#2563eb";ctx.lineWidth=2;ctx.beginPath();
+ data.forEach((v,i)=>{const x=xp(i),y=yp(v);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y)});ctx.stroke();
+ ctx.fillStyle="#111827";ctx.font="600 13px system-ui";ctx.textAlign="center";ctx.fillText(opts.title||"",w/2,18);
+ ctx.fillStyle="#475569";ctx.font="10px system-ui";
+ days.forEach((d,i)=>ctx.fillText(d.slice(0,3),m.l+(i+.5)*pw/7,h-18));
+ ctx.fillText("Recording / day",m.l+pw/2,h-4);
+ ctx.save();ctx.translate(14,m.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText(opts.ylabel||"",0,0);ctx.restore();
+ ctx.strokeStyle="#111827";ctx.strokeRect(m.l,m.t,pw,ph);
+}
+function multiLineChart(canvas,seriesList,opts={}){
+ const {ctx,w,h}=setupChart(canvas),m={l:53,r:18,t:30,b:42},pw=w-m.l-m.r,ph=h-m.t-m.b;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+
+ let mn=Infinity,mx=-Infinity;
+ for(const s of seriesList){
+   for(const v of s.data){ if(v<mn)mn=v; if(v>mx)mx=v; }
+ }
+ [mn,mx]=niceRange(opts.min??mn,opts.max??mx);
+
+ const xp=i=>m.l+i/(seriesList[0].data.length-1)*pw, yp=v=>m.t+(mx-v)/(mx-mn)*ph;
+
+ ctx.strokeStyle="#e5e7eb";ctx.lineWidth=1;ctx.fillStyle="#475569";ctx.font="10px system-ui";
+ for(let j=0;j<=5;j++){
+   const y=m.t+j*ph/5,v=mx-j*(mx-mn)/5;
+   ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(m.l+pw,y);ctx.stroke();
+   ctx.textAlign="right";ctx.fillText(v.toFixed(opts.decimals??1),m.l-7,y+3);
+ }
+ for(let d=0;d<=7;d++){
+   const x=m.l+d*pw/7;
+   ctx.beginPath();ctx.moveTo(x,m.t);ctx.lineTo(x,m.t+ph);ctx.stroke();
+ }
+
+ for(const s of seriesList){
+   ctx.strokeStyle=s.color;ctx.lineWidth=1.8;ctx.beginPath();
+   s.data.forEach((v,i)=>{const x=xp(i),y=yp(v); if(i)ctx.lineTo(x,y); else ctx.moveTo(x,y);});
+   ctx.stroke();
+ }
+
+ ctx.fillStyle="#111827";ctx.font="600 13px system-ui";ctx.textAlign="center";
+ ctx.fillText(opts.title||"",w/2,18);
+ ctx.fillStyle="#475569";ctx.font="10px system-ui";
+ days.forEach((d,i)=>ctx.fillText(d.slice(0,3),m.l+(i+.5)*pw/7,h-18));
+ ctx.fillText("Recording / day",m.l+pw/2,h-4);
+ ctx.save();ctx.translate(14,m.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText(opts.ylabel||"",0,0);ctx.restore();
+ ctx.strokeStyle="#111827";ctx.strokeRect(m.l,m.t,pw,ph);
+}
+function barChart(canvas,data){
+ const {ctx,w,h}=setupChart(canvas),m={l:58,r:18,t:30,b:42},pw=w-m.l-m.r,ph=h-m.t-m.b,max=Math.max(...data)*1.08;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle="#e5e7eb";ctx.fillStyle="#475569";ctx.font="10px system-ui";
+ for(let j=0;j<=5;j++){const y=m.t+j*ph/5,v=max*(1-j/5);ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(m.l+pw,y);ctx.stroke();ctx.textAlign="right";ctx.fillText(Math.round(v).toLocaleString(),m.l-7,y+3)}
+ const bw=pw/data.length*.7;
+ data.forEach((v,i)=>{const x=m.l+(i+.15)*pw/data.length,y=m.t+(1-v/max)*ph;ctx.fillStyle="#2563eb";ctx.fillRect(x,y,bw,m.t+ph-y);ctx.fillStyle="#475569";ctx.textAlign="center";ctx.fillText(String(i+1),x+bw/2,h-19)});
+ ctx.fillStyle="#111827";ctx.font="600 13px system-ui";ctx.textAlign="center";ctx.fillText("Load distribution over all generated images",w/2,18);
+ ctx.fillStyle="#475569";ctx.font="10px system-ui";ctx.fillText("Quadrant [-]",m.l+pw/2,h-4);
+ ctx.save();ctx.translate(14,m.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText("Counted pixels [-]",0,0);ctx.restore();
+ ctx.strokeStyle="#111827";ctx.strokeRect(m.l,m.t,pw,ph);
+}
+
+// P1
+drawFrame(document.getElementById("p1png"),frames[0]);
+async function updateJPEG(){
+ const q=+document.getElementById("jpegQ").value/100;
+ document.getElementById("jpegQLabel").textContent=Math.round(q*100)+"%";
+ const src=document.getElementById("p1png"),url=src.toDataURL("image/jpeg",q);
+ const img=new Image();
+ await new Promise(res=>{img.onload=res;img.src=url});
+ const c=document.getElementById("p1jpg"),ctx=c.getContext("2d");ctx.clearRect(0,0,W,H);ctx.drawImage(img,0,0,W,H);
+ const a=src.getContext("2d").getImageData(0,0,W,H).data;
+ const b=ctx.getImageData(0,0,W,H).data;
+ const fA=new Map(),fB=new Map();let changed=0,exact=0;
+ const exactSet=new Set(classes.map(c=>c.rgb.join(","))); exactSet.add("0,0,0");
+ for(let i=0;i<a.length;i+=4){
+   const ca=`${a[i]},${a[i+1]},${a[i+2]}`;
+   const cb=`${b[i]},${b[i+1]},${b[i+2]}`;
+   fA.set(ca,(fA.get(ca)||0)+1);
+   fB.set(cb,(fB.get(cb)||0)+1);
+   if(ca!==cb)changed++;
+   if(exactSet.has(cb))exact++;
+ }
+ const valsA=[...fA.entries()].sort((x,y)=>y[1]-x[1]);
+ const valsB=[...fB.entries()].sort((x,y)=>y[1]-x[1]);
+ document.getElementById("pngUnique").textContent=valsA.length;
+ document.getElementById("jpgUnique").textContent=valsB.length;
+
+ const fmtTop=(arr,n=12)=>arr.slice(0,n).map(([rgb,count])=>`rgb(${rgb})`).join(" · ");
+ const fmtCounts=(arr,n=12)=>arr.slice(0,n).map(([rgb,count])=>`rgb(${rgb}): ${count.toLocaleString()} px`).join(" · ");
+
+ document.getElementById("pngValues").textContent=fmtTop(valsA);
+ document.getElementById("jpgValues").textContent=fmtTop(valsB);
+ document.getElementById("pngValueCounts").textContent=fmtCounts(valsA);
+ document.getElementById("jpgValueCounts").textContent=fmtCounts(valsB);
+ document.getElementById("jpgChanged").textContent=(100*changed/(W*H)).toFixed(1)+"%";
+ document.getElementById("exactAfterJpg").textContent=(100*exact/(W*H)).toFixed(1)+"%";
+}
+document.getElementById("jpegQ").addEventListener("input",updateJPEG);updateJPEG();
+
+// P2 setup
+const colorSelect=document.getElementById("colorSelect"),legend=document.getElementById("colorLegend");
+classes.forEach((c,i)=>{const o=document.createElement("option");o.value=i;o.textContent=c.name;colorSelect.appendChild(o);legend.innerHTML+=`<span><i class="sw" style="background:${cssColor(c)}"></i>${c.name}</span>`});
+function updateFrame(){
+ const i=+document.getElementById("frameSlider").value,c=+colorSelect.value,s=stats[i];
+ drawFrame(document.getElementById("p2preview"),frames[i]);
+ drawFrame(document.getElementById("maskPreview"),frames[i],{mask:true});
+ drawFrame(document.getElementById("p4preview"),frames[i],{quadrants:true});
+ document.getElementById("frameLabel").textContent=`${i+1} / ${N}`;
+ document.getElementById("colorPixels").textContent=s.colorPx[c].toLocaleString();
+ document.getElementById("colorPercent").textContent=(100*s.colorPx[c]/totalPx).toFixed(2)+"%";
+ const mean=seriesColor[c].reduce((a,b)=>a+b,0)/N;
+ document.getElementById("colorMean").textContent=mean.toFixed(2)+"%";
+ document.getElementById("objCount").textContent=s.objects;
+ document.getElementById("occPixels").textContent=s.occupied.toLocaleString();
+ document.getElementById("occPct").textContent=(100*s.occupied/totalPx).toFixed(2)+"%";
+ updateP2Chart();
+}
+function updateP2Chart(){
+ const c=+colorSelect.value,sm=document.getElementById("smoothP2").checked;
+ const data=sm?movingMean(seriesColor[c],100):seriesColor[c];
+ lineChart(document.getElementById("p2chart"),data,{title:`${classes[c].name} pixel percentage${sm?" — moving mean 100":""}`,ylabel:"Percentage [%]",min:0,color:cssColor(classes[c])});
+}
+function updateP2AllChart(){
+ const sm=document.getElementById("smoothP2All").checked;
+ const seriesList=classes.map((c,i)=>({
+   color:cssColor(c),
+   data:sm?movingMean(seriesColor[i],100):seriesColor[i]
+ }));
+ multiLineChart(
+   document.getElementById("p2allChart"),
+   seriesList,
+   {title:`All material pixel percentages${sm?" — moving mean 100":""}`,ylabel:"Percentage [%]",min:0}
+ );
+}
+document.getElementById("frameSlider").addEventListener("input",updateFrame);
+colorSelect.addEventListener("change",updateFrame);
+document.getElementById("smoothP2").addEventListener("change",updateP2Chart);
+document.getElementById("smoothP2All").addEventListener("change",updateP2AllChart);
+
+// P3
+function updateP3(){
+ const st=document.getElementById("smoothThroughput").checked,so=document.getElementById("smoothOccupation").checked;
+ lineChart(document.getElementById("throughputChart"),st?movingMean(seriesThroughput,70):seriesThroughput,{title:`Throughputrate Of A Week — ${st?"Smoothed":"RAW"}`,ylabel:"nObjects [-]",min:0,decimals:1});
+ lineChart(document.getElementById("occupationChart"),so?movingMean(seriesOccupation,70):seriesOccupation,{title:`Occupation Density Of A Week — ${so?"Smoothed":"RAW"}`,ylabel:"Occupation Density [%]",min:0,decimals:1});
+}
+document.getElementById("smoothThroughput").addEventListener("change",updateP3);
+document.getElementById("smoothOccupation").addEventListener("change",updateP3);
+
+// P4
+function updateP4(){barChart(document.getElementById("quadChart"),quadTotals)}
+
+// Tabs / responsive redraw
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+ document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));document.getElementById(b.dataset.tab).classList.add("active");
+ requestAnimationFrame(()=>{updateP2Chart();updateP2AllChart();updateP3();updateP4()});
+});
+new ResizeObserver(()=>{updateP2Chart();updateP2AllChart();updateP3();updateP4()}).observe(document.querySelector(".wrap"));
+
+updateFrame();updateP2AllChart();updateP3();updateP4();
+})();
+</script>
+</body>
+</html>
