@@ -159,7 +159,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
           <select id="nirPrep">
             <option value="raw">Raw spectrum</option>
             <option value="center">Mean centered</option>
-            <option value="derivative">First derivative</option>
+            <option value="derivative">First derivative (central difference)</option>
           </select>
         </div>
       </section>
@@ -283,33 +283,44 @@ function getSource(){
 
 function preprocess(src){
   const raw=src.raw, n=raw.length;
-  let p=Float64Array.from(raw);
+  let display=Float64Array.from(raw);
 
+  // Add noise to the signal that the student actually sees and analyzes.
   const noiseAmp=state.noise/100;
   if(noiseAmp>0){
-    let peak=0;for(const v of p)peak=Math.max(peak,Math.abs(v));
+    let peak=0;for(const v of display)peak=Math.max(peak,Math.abs(v));
     const scale=Math.max(peak,1)*noiseAmp;
-    for(let i=0;i<n;i++)p[i]+=seededNoise(i,state.noiseSeed)*scale;
+    for(let i=0;i<n;i++)display[i]+=seededNoise(i,state.noiseSeed)*scale;
   }
 
+  // NIR preprocessing changes the displayed spectrum immediately. The FFT is
+  // then calculated from exactly this displayed preprocessed signal.
   if(state.mode==="nir"){
     if(state.nirPrep==="center"){
-      const m=p.reduce((a,b)=>a+b,0)/n;for(let i=0;i<n;i++)p[i]-=m;
+      const m=display.reduce((a,b)=>a+b,0)/n;
+      for(let i=0;i<n;i++)display[i]-=m;
     }else if(state.nirPrep==="derivative"){
       const d=new Float64Array(n);
-      for(let i=1;i<n;i++)d[i]=p[i]-p[i-1];
-      d[0]=d[1];p=d;
+      if(n>1){
+        d[0]=display[1]-display[0];
+        for(let i=1;i<n-1;i++)d[i]=(display[i+1]-display[i-1])/2;
+        d[n-1]=display[n-1]-display[n-2];
+      }
+      display=d;
     }
   }
 
+  // DC removal is an FFT preparation option, deliberately separate from the
+  // NIR preprocessing display so that “Raw spectrum” still looks raw.
+  const processed=Float64Array.from(display);
   if(state.removeMean){
-    const m=p.reduce((a,b)=>a+b,0)/n;
-    for(let i=0;i<n;i++)p[i]-=m;
+    const m=processed.reduce((a,b)=>a+b,0)/n;
+    for(let i=0;i<n;i++)processed[i]-=m;
   }
 
   const w=windowArray(n,state.window), win=new Float64Array(n);
-  for(let i=0;i<n;i++)win[i]=p[i]*w[i];
-  return {processed:p,windowed:win,window:w};
+  for(let i=0;i<n;i++)win[i]=processed[i]*w[i];
+  return {displayed:display,processed,windowed:win,window:w};
 }
 
 function fftRadix2(realInput,nfft){
@@ -386,18 +397,21 @@ let current=null,lastSpectrumGeom=null;
 
 function drawSignal(){
   const src=getSource(),prep=preprocess(src),c=el("signalPlot"),{ctx,w,h}=setup(c);
+  const primary=state.mode==="nir"?prep.displayed:prep.displayed;
   let ymin=Infinity,ymax=-Infinity;
-  for(const v of src.raw){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v)}
-  if(state.analyzed){
+  for(const v of primary){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v)}
+  if(state.analyzed&&(state.window!=="rect"||state.removeMean)){
     for(const v of prep.windowed){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v)}
   }
   if(!Number.isFinite(ymin)||ymin===ymax){ymin=-1;ymax=1}
-  const pad=(ymax-ymin)*.12||.2;ymin-=pad;ymax+=pad;
+  const pad=(ymax-ymin)*.12||.02;ymin-=pad;ymax+=pad;
   const xmax=(src.raw.length-1)*src.xScale;
   const xLabel=src.xLabel;
-  const title=state.mode==="nir"?"PP.mat NIR spectrum (example pixel)":"Selected signal in the time domain";
-  const xFmt=state.mode==="nir"?v=>String(Math.round(v)):v=>String(Math.round(v));
-  const g=axes(ctx,w,h,0,xmax,ymin,ymax,xLabel,"Amplitude",title,xFmt,v=>Math.abs(v)>=10?v.toFixed(0):v.toFixed(2));
+  const nirNames={raw:"Raw",center:"Mean centered",derivative:"First derivative"};
+  const title=state.mode==="nir"?`PP.mat NIR spectrum — ${nirNames[state.nirPrep]}`:"Selected signal in the time domain";
+  const yLabel=state.mode==="nir"&&state.nirPrep==="derivative"?"Δ intensity / band":state.mode==="nir"?"Normalized intensity":"Amplitude";
+  const xFmt=v=>String(Math.round(v));
+  const g=axes(ctx,w,h,0,xmax,ymin,ymax,xLabel,yLabel,title,xFmt,v=>Math.abs(v)>=10?v.toFixed(0):Math.abs(v)>=.1?v.toFixed(2):v.toFixed(3));
 
   function line(arr,color,width,alpha=1){
     ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineWidth=width;ctx.beginPath();
@@ -406,13 +420,20 @@ function drawSignal(){
   if(state.showComponents&&state.mode==="mix"){
     line(src.comps[0],"#ef4444",1.1,.7);line(src.comps[1],"#22c55e",1.1,.7);line(src.comps[2],"#7c3aed",1.1,.7);
   }
-  line(src.raw,"#2563eb",2,1);
-  if(state.analyzed&&(state.window!=="rect"||state.noise>0||state.removeMean||(state.mode==="nir"&&state.nirPrep!=="raw"))){
-    line(prep.windowed,"#f59e0b",1.35,.85);
+  line(primary,"#2563eb",2,1);
+
+  // Window/DC-removal is an FFT preparation stage. Show it only as an
+  // optional orange overlay after the transform has been run.
+  if(state.analyzed&&(state.window!=="rect"||state.removeMean)){
+    line(prep.windowed,"#f59e0b",1.2,.72);
     el("processedLegend").classList.remove("hidden");
   }else el("processedLegend").classList.add("hidden");
-}
 
+  if(state.mode==="nir"){
+    el("signalLegend").textContent=state.nirPrep==="derivative"?"NIR first derivative":state.nirPrep==="center"?"Mean-centered NIR":"NIR intensity";
+    el("domainSubtitle").textContent=state.nirPrep==="derivative"?"Intensity change per spectral band":state.nirPrep==="center"?"Mean-centered intensity versus spectral band index":"Intensity versus spectral band index";
+  }
+}
 function drawSpectrum(){
   const c=el("spectrum"),{ctx,w,h}=setup(c);
   if(!state.analyzed||!current){
@@ -556,7 +577,7 @@ function updateTask(){
     square:"<b>Experiment:</b> change the fundamental frequency. Which additional peaks move with it? A square wave contains odd harmonics: 3f, 5f, 7f… as long as they remain below Nyquist.",
     chirp:"<b>Experiment:</b> compare a narrow sweep with a wide sweep. Unlike a stationary sine wave, a chirp spreads energy across a frequency range instead of producing one sharp line.",
     pulse:"<b>Experiment:</b> make the pulse shorter. The signal becomes more localized in time, but its spectrum becomes broader. This time–frequency trade-off is a central Fourier concept.",
-    nir:"<b>Experiment:</b> compare Raw spectrum, Mean centered and First derivative. Then add noise. Notice how broad NIR trends concentrate near zero spectral frequency, while rapid band-to-band changes appear at higher Fourier components."
+    nir:"<b>Experiment:</b> compare Raw spectrum, Mean centered and First derivative. The upper plot must change immediately with the selected preprocessing. Then add noise. Notice how broad NIR trends concentrate near zero spectral frequency, while rapid band-to-band changes appear at higher Fourier components."
   };
   el("taskText").innerHTML=map[state.mode];
 }

@@ -152,6 +152,8 @@ For temporal signals, students can change frequencies, amplitudes, sample count,
 
 The square-wave, chirp, and pulse cases are included to show that not every signal produces isolated spectral lines. They demonstrate harmonics, distributed spectral energy, and the time–frequency trade-off.
 
+For the NIR example, the selected preprocessing is applied directly to the upper displayed NIR trace as well as to the FFT input. Raw, mean-centered, and first-derivative views therefore look visibly different before the transform is run. The first derivative uses a central finite difference for interior bands.
+
 For the NIR example, the independent variable is spectral band index. The FFT therefore uses units of cycles per band rather than hertz. The page offers raw, mean-centered, and first-derivative preprocessing so students can see that broad spectral trends occupy low Fourier components while rapid band-to-band changes and noise occupy higher components. The page explicitly notes that these Fourier-domain peaks are not chemical absorption wavelengths.
 
 The FFT remains fully browser-side using the embedded radix-2 Cooley–Tukey implementation. Non-power-of-two inputs such as the 220-band NIR spectrum are zero-padded to the next power of two before transformation.
