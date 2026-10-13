@@ -1,6 +1,6 @@
 # Exercise Repository — interactive student portal
 
-A GitHub Pages-ready landing page with twelve browser-based teaching exercises. Students can open the demos directly in a modern browser; no MATLAB installation is required for the converted exercises.
+A GitHub Pages-ready landing page with thirteen browser-based teaching exercises. Students can open the demos directly in a modern browser; no MATLAB installation is required for the converted exercises.
 
 ## Deploy
 
@@ -16,6 +16,7 @@ A GitHub Pages-ready landing page with twelve browser-based teaching exercises. 
 | Sampling rate | `sampling-rate.html` |
 | Nyquist theorem & aliasing | `nyquist-aliasing.html` |
 | Fourier transform & FFT | `fourier-spectrum.html` |
+| FFT audio visualizer | `audio-fft-visualizer.html` |
 | Sampling depth | `sampling-depth.html` |
 | NIR sampling depth | `nir-sampling-depth.html` |
 | NIR sampling resolution | `nir-sampling-resolution.html` |
@@ -150,3 +151,8 @@ The fixed signal is deliberately aligned to 1 Hz FFT bins so the introductory sp
 The exercise also shows `Δf = f_s / N = 1 Hz` and the 2048 Hz Nyquist frequency, linking directly to the preceding sampling-rate and Nyquist exercises.
 
 No external FFT library is required at runtime. The page embeds a small pure-JavaScript radix-2 FFT so it remains self-contained on GitHub Pages. A later microphone exercise can reuse the same FFT engine or replace it with a packaged FFT library.
+
+
+## FFT audio visualizer
+
+`audio-fft-visualizer.html` is a real-time Web Audio API spectrum display derived from the supplied visualizer prototype. It supports fixed demo tones at 120 Hz, 440 Hz and 880 Hz as well as live microphone input after browser permission. The page uses an `AnalyserNode` with FFT size 2048, a logarithmic frequency display, live sample-rate and FFT-bin readouts, and a strongest-peak indicator. Microphone audio remains local to the browser.
