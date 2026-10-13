@@ -102,3 +102,8 @@ The YOLO page loads runtime libraries from `esm.sh`, requests WebGPU, and may re
 ## Testing
 
 The portal and new viewer JavaScript are syntax-checked locally. The six cuboid textures were generated from the supplied `PP.mat` file. Browser execution should still be verified after deployment, especially the YOLO model path and webcam/WebGPU behavior.
+
+
+## HSI cube teaching view
+
+`showMatCube3d.html` represents the PP hyperspectral cube as 220 opaque spectral-band sheets. A selected band is pulled out from the stack and a fixed sample pixel (row 97, column 33) is linked to its 220-band intensity spectrum. This is intended to teach the relationship between spatial band images and a pixel spectrum rather than imitate MATLAB volume-rendering aesthetics.
