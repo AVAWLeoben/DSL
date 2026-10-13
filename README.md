@@ -112,3 +112,8 @@ The portal and new viewer JavaScript are syntax-checked locally. The six cuboid 
 ### HSI cube teaching viewer
 
 `showMatCube3d.html` renders all 220 bands as thin 3D slabs with visible side edges. The default view keeps the bands packed into one cuboid; the layer-separation control opens small gaps, and the selected band can be pulled out while its chosen pixel is linked to the spectrum chart.
+
+
+### HSI cube renderer v3
+
+The ShowMatCube3D page preserves CSS 3D on the 220-slab parent (no filter/opacity grouping on the 3D hierarchy), so the spectral layers retain their physical Z separation in Chromium-based browsers. A separate 2D shadow is used outside the 3D stack.
