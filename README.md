@@ -25,49 +25,51 @@ A GitHub Pages-ready landing page with nine browser-based teaching exercises. St
 
 ## ShowMatCube3D browser conversion
 
-The original MATLAB exercise loads `PP.mat`, normalizes `imnData` by its global maximum, and displays the resulting volume with `volshow`:
+The MATLAB reference loads `PP.mat`, normalizes `imnData` by its global maximum, and sends the 3D array to `volshow`:
 
 ```matlab
 cube = imnData / max(imnData,[],'all');
 v = volshow(cube);
 ```
 
-The browser page reproduces the normalization but intentionally avoids doing full volume rendering on every student computer. Instead, the supplied `PP.mat` cube was pre-rendered into compact turntable atlases:
+The student browser page presents the same HSI dataset as a lightweight **interactive 3D data cuboid** rather than attempting real-time volume ray-casting. The cuboid has six pre-rendered textures:
 
 ```text
 assets/showmatcube3d/
-├── pp_cube_elev_m20.webp
-├── pp_cube_elev_0.webp
-└── pp_cube_elev_p20.webp
+├── front.webp
+├── back.webp
+├── left.webp
+├── right.webp
+├── top.webp
+└── bottom.webp
 ```
 
-Each atlas contains 36 azimuth views at 10° increments. The three atlases represent −20°, 0°, and +20° elevation. The page lets students drag to rotate, drag vertically to tilt, zoom, auto-rotate, use keyboard arrows, reset the view, and enter fullscreen mode.
+The large front/back faces are false-colour spatial composites. The narrow faces are spatial-versus-spectral cross-sections, so the third cuboid axis corresponds to the 42 spectral bands. The spectral depth is visually exaggerated to keep that axis readable on normal classroom displays. The colour progression on the spectral faces encodes band order only; it is not a calibrated visible-wavelength mapping.
 
-The pre-render uses a maximum-intensity projection after rotating the normalized volume. This is not a pixel-for-pixel reproduction of MATLAB `volshow`; it is a deliberately lightweight teaching representation of the same normalized 3D data.
+Students can drag the whole cuboid freely, zoom with the mouse wheel or slider, rotate with the arrow keys/buttons, enable automatic rotation, reset the view, and use fullscreen mode. No MAT-file parsing or voxel-by-voxel rendering occurs in the browser.
 
-The source volume used for the included render is:
+For the supplied `PP.mat`:
 
-- variable: `imnData`
-- size: `312 × 220 × 42`
+- `imnData` shape: `312 × 220 × 42`
 - data maximum: `3099`
 
 The original MATLAB reference script is included at `matlab-reference/ShowMatCube3D.m`.
 
-### Regenerating the cube assets
+### Regenerating the cuboid textures
 
-For instructor-side preparation only, the package contains:
+An instructor-side helper is included:
 
 ```text
 tools/prerender_showmatcube3d.py
 ```
 
-Run it with Python plus NumPy, SciPy and Pillow:
+With Python, NumPy, SciPy and Pillow installed:
 
 ```bash
 python tools/prerender_showmatcube3d.py PP.mat assets/showmatcube3d
 ```
 
-Students do **not** need Python, MATLAB, SciPy, or the original `.mat` file to use the deployed viewer. Only `showMatCube3d.html` and the three pre-rendered WebP atlases are required at runtime.
+Students do **not** need Python, MATLAB, SciPy, Pillow, or the original `.mat` file to use the deployed viewer. Only `showMatCube3d.html` and the six WebP face textures are required at runtime.
 
 ## YOLO classroom model files
 
@@ -92,11 +94,11 @@ The YOLO page loads runtime libraries from `esm.sh`, requests WebGPU, and may re
 
 - `index.html` is the responsive, searchable and filterable student portal.
 - Each exercise is a standalone HTML page linked by a fully clickable card.
-- `showMatCube3d.html` uses pre-rendered assets in `assets/showmatcube3d/` for smooth classroom use.
+- `showMatCube3d.html` uses six pre-rendered cuboid face textures in `assets/showmatcube3d/` for smooth classroom use.
 - `.nojekyll` allows GitHub Pages to serve the repository without Jekyll processing.
 - `models/` contains the YOLO LiteRT binaries after they are added.
 - No server, account, database, or backend is required for the static exercises.
 
 ## Testing
 
-The portal and new viewer JavaScript are syntax-checked locally. The pre-rendered cube assets were generated from the supplied `PP.mat` file. Browser execution should still be verified after deployment, especially the YOLO model path and webcam/WebGPU behavior.
+The portal and new viewer JavaScript are syntax-checked locally. The six cuboid textures were generated from the supplied `PP.mat` file. Browser execution should still be verified after deployment, especially the YOLO model path and webcam/WebGPU behavior.
