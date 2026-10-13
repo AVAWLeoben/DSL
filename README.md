@@ -16,6 +16,7 @@ A GitHub Pages-ready landing page with nine browser-based teaching exercises. St
 | Sampling rate | `sampling-rate.html` |
 | Sampling depth | `sampling-depth.html` |
 | NIR sampling depth | `nir-sampling-depth.html` |
+| NIR sampling resolution | `nir-sampling-resolution.html` |
 | Throughput evaluation | `throughput-evaluation.html` |
 | Waste collection simulation | `waste-collection.html` |
 | NIR sorting & ejection | `nir-sorting.html` |

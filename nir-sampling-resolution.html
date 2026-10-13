@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIR Spectral Sampling Resolution</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;
+  --muted:#9aa4b2;--border:#303744;--accent:#38bdf8;--paper:#fff;
+  --blue:#2563eb;--red:#ef4444;--green:#22c55e;--orange:#f59e0b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:20px}
+h1{font-size:25px;margin:0 0 5px}.sub{color:var(--muted);margin:0 0 18px;line-height:1.5}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px}
+.chart{background:#fff;border-radius:10px;display:block;width:100%;height:290px}
+.chart+.chart{margin-top:14px}
+.controls{margin-top:16px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+input[type=range]{width:100%}
+.readout{min-width:205px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;text-align:center;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px}
+.card .label{font-size:12px;color:var(--muted)}.card .value{font-size:18px;font-weight:700;margin-top:2px}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:12px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.key{display:inline-flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.callout{margin-top:12px;padding:11px 12px;border:1px solid #3b526b;background:#111b28;border-radius:9px;color:#c9d7e5;font-size:12px;line-height:1.5}
+@media(max-width:780px){.stats{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.controls{grid-template-columns:1fr}.readout{min-width:0}.chart{height:250px}}
+@media(max-width:480px){.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>NIR Spectral Sampling Resolution</h1>
+  <p class="sub">Explore how the spacing between spectral measurements changes how faithfully a NIR spectrum is represented. Finer sampling captures narrow spectral features; coarse sampling can miss or distort them.</p>
+
+  <section class="panel">
+    <canvas id="reference" class="chart" aria-label="Reference 220-band NIR spectrum"></canvas>
+    <canvas id="sampled" class="chart" aria-label="Spectrally sampled and reconstructed NIR spectrum"></canvas>
+
+    <div class="legend">
+      <span class="key"><span class="dot" style="background:#2563eb"></span>Reference 220-band spectrum</span>
+      <span class="key"><span class="dot" style="background:#ef4444"></span>Measured spectral samples</span>
+      <span class="key"><span class="dot" style="background:#22c55e"></span>Linear reconstruction</span>
+    </div>
+
+    <div class="controls">
+      <input id="samples" type="range" min="4" max="220" step="1" value="18" aria-label="Number of spectral samples">
+      <div id="sampleLabel" class="readout">Spectral samples: 18</div>
+    </div>
+
+    <div class="stats">
+      <div class="card"><div class="label">Spectral samples</div><div id="countValue" class="value">18</div></div>
+      <div class="card"><div class="label">Sampling interval Δband</div><div id="spacingValue" class="value">—</div></div>
+      <div class="card"><div class="label">Reference bands</div><div class="value">220</div></div>
+      <div class="card"><div class="label">Mean reconstruction error</div><div id="maeValue" class="value">—</div></div>
+    </div>
+
+    <div class="callout"><b>Sampling resolution, not sampling rate:</b> this exercise varies how closely neighboring spectral measurements are spaced along the spectral axis. A smaller Δband means finer spectral sampling resolution.</div>
+
+    <div class="note">
+      The upper plot is a real 220-band spectrum from <b>PP.mat</b> at pixel row 97, column 33. The lower plot keeps only the selected number of evenly spaced spectral measurements and connects them linearly. With coarse sampling, local minima and narrow spectral features may be shifted, flattened, or missed entirely. This demonstrates spectral <b>sampling resolution</b>; it is distinct from ADC bit depth and from the instrument's optical spectral resolution/FWHM.
+    </div>
+  </section>
+</div>
+
+<script>
+(()=>{
+"use strict";
+const reference = [1460.0,1456.0,1450.0,1444.0,1439.0,1435.0,1433.0,1431.0,1429.0,1425.0,1422.0,1421.0,1422.0,1422.0,1422.0,1424.0,1427.0,1428.0,1426.0,1422.0,1419.0,1420.0,1421.0,1421.0,1420.0,1418.0,1418.0,1419.0,1418.0,1417.0,1416.0,1416.0,1418.0,1418.0,1418.0,1417.0,1416.0,1416.0,1415.0,1414.0,1411.0,1406.0,1398.0,1387.0,1375.0,1361.0,1341.0,1316.0,1287.0,1258.0,1231.0,1209.0,1191.0,1175.0,1156.0,1133.0,1106.0,1078.0,1049.0,1018.0,985.0,953.0,924.0,904.0,894.0,892.0,893.0,894.0,894.0,893.0,895.0,903.0,918.0,939.0,966.0,995.0,1027.0,1056.0,1083.0,1105.0,1124.0,1141.0,1156.0,1170.0,1182.0,1192.0,1199.0,1206.0,1213.0,1219.0,1224.0,1228.0,1232.0,1234.0,1235.0,1235.0,1235.0,1236.0,1237.0,1238.0,1239.0,1240.0,1239.0,1238.0,1237.0,1235.0,1233.0,1231.0,1229.0,1227.0,1222.0,1216.0,1208.0,1197.0,1178.0,1149.0,1111.0,1069.0,1029.0,995.0,967.0,942.0,919.0,896.0,874.0,854.0,837.0,823.0,813.0,808.0,810.0,818.0,828.0,837.0,841.0,844.0,849.0,856.0,864.0,870.0,874.0,877.0,881.0,885.0,891.0,897.0,905.0,912.0,921.0,928.0,936.0,943.0,949.0,955.0,962.0,968.0,974.0,978.0,981.0,984.0,989.0,995.0,1002.0,1011.0,1019.0,1027.0,1034.0,1040.0,1046.0,1053.0,1059.0,1065.0,1070.0,1074.0,1078.0,1080.0,1082.0,1083.0,1084.0,1084.0,1084.0,1083.0,1081.0,1079.0,1077.0,1074.0,1071.0,1067.0,1064.0,1060.0,1056.0,1050.0,1045.0,1041.0,1036.0,1030.0,1025.0,1019.0,1013.0,1006.0,998.0,989.0,978.0,966.0,954.0,941.0,930.0,921.0,914.0,909.0,905.0,902.0,900.0,898.0,896.0,894.0,890.0,885.0,878.0,870.0];
+const N = reference.length;
+const referenceCanvas = document.getElementById("reference");
+const sampledCanvas = document.getElementById("sampled");
+const slider = document.getElementById("samples");
+const sampleLabel = document.getElementById("sampleLabel");
+const countValue = document.getElementById("countValue");
+const spacingValue = document.getElementById("spacingValue");
+const maeValue = document.getElementById("maeValue");
+const ymin = Math.min(...reference), ymax = Math.max(...reference);
+const padY = Math.max(1,(ymax-ymin)*0.08);
+
+function setupCanvas(canvas){
+  const rect=canvas.getBoundingClientRect();
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  const w=Math.max(320,rect.width), h=Math.max(220,rect.height);
+  canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr);
+  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx,w,h};
+}
+function geometry(w,h){const m={left:66,right:24,top:42,bottom:48};return {m,plotW:w-m.left-m.right,plotH:h-m.top-m.bottom};}
+function xPx(i,g){return g.m.left+(i/(N-1))*g.plotW;}
+function yPx(v,g){return g.m.top+((ymax+padY-v)/(ymax-ymin+2*padY))*g.plotH;}
+function drawAxes(ctx,w,h,title){
+  const g=geometry(w,h);ctx.clearRect(0,0,w,h);ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#111827";ctx.font="600 14px system-ui";ctx.textAlign="center";ctx.fillText(title,w/2,21);
+  ctx.font="11px system-ui";
+  for(let k=0;k<=4;k++){const v=(ymin-padY)+(ymax-ymin+2*padY)*k/4;const py=yPx(v,g);ctx.strokeStyle="#e5e7eb";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(g.m.left,py);ctx.lineTo(g.m.left+g.plotW,py);ctx.stroke();ctx.fillStyle="#475569";ctx.textAlign="right";ctx.fillText(Math.round(v),g.m.left-8,py+4);}
+  const ticks=[0,54,109,164,219];ctx.textAlign="center";
+  for(const i of ticks){const px=xPx(i,g);ctx.strokeStyle="#e5e7eb";ctx.beginPath();ctx.moveTo(px,g.m.top);ctx.lineTo(px,g.m.top+g.plotH);ctx.stroke();ctx.fillStyle="#475569";ctx.fillText(String(i+1),px,h-18);}
+  ctx.fillStyle="#475569";ctx.fillText("spectral band index",g.m.left+g.plotW/2,h-4);
+  ctx.save();ctx.translate(15,g.m.top+g.plotH/2);ctx.rotate(-Math.PI/2);ctx.fillText("raw intensity",0,0);ctx.restore();
+  ctx.strokeStyle="#111827";ctx.lineWidth=1.2;ctx.strokeRect(g.m.left,g.m.top,g.plotW,g.plotH);return g;
+}
+function drawReference(){
+  const {ctx,w,h}=setupCanvas(referenceCanvas),g=drawAxes(ctx,w,h,"Reference NIR Spectrum — 220 bands");
+  ctx.strokeStyle="#2563eb";ctx.lineWidth=2.2;ctx.beginPath();
+  reference.forEach((v,i)=>{const x=xPx(i,g),y=yPx(v,g);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+}
+function sampleIndices(n){const a=[];for(let i=0;i<n;i++)a.push(Math.round((N-1)*i/(n-1)));return [...new Set(a)];}
+function reconstruct(idx){
+  const out=new Array(N);let seg=0;
+  for(let i=0;i<N;i++){while(seg<idx.length-2 && i>idx[seg+1])seg++;const a=idx[seg],b=idx[Math.min(seg+1,idx.length-1)];if(a===b)out[i]=reference[a];else{const t=(i-a)/(b-a);out[i]=reference[a]*(1-t)+reference[b]*t;}}
+  return out;
+}
+function drawSampled(n){
+  const idx=sampleIndices(n), rec=reconstruct(idx), {ctx,w,h}=setupCanvas(sampledCanvas),g=drawAxes(ctx,w,h,`Reconstructed Spectrum — ${idx.length} spectral samples`);
+  ctx.strokeStyle="#cbd5e1";ctx.lineWidth=1.2;ctx.beginPath();reference.forEach((v,i)=>{const x=xPx(i,g),y=yPx(v,g);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+  ctx.strokeStyle="#22c55e";ctx.lineWidth=2.2;ctx.beginPath();rec.forEach((v,i)=>{const x=xPx(i,g),y=yPx(v,g);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+  for(const i of idx){const x=xPx(i,g),y=yPx(reference[i],g);ctx.beginPath();ctx.arc(x,y,4.6,0,Math.PI*2);ctx.fillStyle="#ef4444";ctx.fill();ctx.strokeStyle="#991b1b";ctx.lineWidth=1;ctx.stroke();}
+  const mae=rec.reduce((s,v,i)=>s+Math.abs(v-reference[i]),0)/N;
+  return {count:idx.length,mae};
+}
+function update(){
+  const requested=Math.max(4,Math.min(220,Math.round(Number(slider.value)||18)));
+  const result=drawSampled(requested);drawReference();
+  const spacing=(N-1)/(result.count-1);
+  sampleLabel.textContent=`Spectral samples: ${result.count}`;
+  countValue.textContent=String(result.count);
+  spacingValue.textContent=`${spacing.toFixed(2)} bands`;
+  maeValue.textContent=result.mae.toFixed(2);
+}
+slider.addEventListener("input",update);
+if("ResizeObserver" in window){const ro=new ResizeObserver(update);ro.observe(referenceCanvas);ro.observe(sampledCanvas);}else window.addEventListener("resize",update);
+update();
+})();
+</script>
+</body>
+</html>
