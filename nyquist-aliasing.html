@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Interactive exercise explaining the Nyquist theorem, Nyquist frequency, Nyquist rate and aliasing.">
+<title>Nyquist Theorem & Aliasing</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#20242d;--text:#eef1f5;
+  --muted:#9aa4b2;--border:#303744;--blue:#2563eb;--red:#ef4444;
+  --green:#22c55e;--orange:#f59e0b;--cyan:#38bdf8;--paper:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1220px;margin:auto;padding:20px}
+.topbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:18px}
+.back{font-size:13px;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:7px 10px;text-decoration:none}.back:hover{color:var(--text)}
+h1{font-size:28px;margin:0 0 5px}.sub{color:var(--muted);margin:0 0 18px;line-height:1.5}
+.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,.8fr);gap:16px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px}
+.chart{display:block;width:100%;height:260px;background:#fff;border-radius:10px}
+.chart+.chart{margin-top:12px}.fold{height:205px;margin-top:12px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:10px 2px 0}.key{display:inline-flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.side{display:grid;gap:12px;align-content:start}.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px}.card h2{font-size:14px;margin:0 0 9px}.small{font-size:12px;color:var(--muted);line-height:1.5}
+.control{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px;margin-top:9px}.control label{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);margin-bottom:6px}.control b{color:var(--text)}input[type=range]{width:100%}
+.presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}button{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:#2a303a;color:var(--text);cursor:pointer;font-size:12px}button:hover{filter:brightness(1.1)}button.primary{background:#075985;border-color:#0ea5e9}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px}.stat .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.stat .v{font-size:18px;font-weight:750;margin-top:2px}.stat .hint{font-size:10px;color:var(--muted);margin-top:2px}
+.status{border-radius:10px;padding:11px 12px;border:1px solid var(--border);line-height:1.45;font-size:13px}.status.safe{background:#10291d;border-color:#256b46}.status.boundary{background:#34280d;border-color:#8a6818}.status.alias{background:#351718;border-color:#8d3234}.status strong{display:block;margin-bottom:3px}
+.term{display:grid;grid-template-columns:120px 1fr;gap:9px;padding:8px 0;border-top:1px solid #ffffff12;font-size:12px}.term:first-of-type{border-top:0;padding-top:0}.term b{color:#dce8f4}.term span{color:var(--muted);line-height:1.45}.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#cfeefe;background:#0e151e;border:1px solid var(--border);border-radius:7px;padding:7px 8px;margin-top:8px;font-size:12px}
+.callout{margin-top:12px;padding:11px 12px;background:#11151c;border-left:3px solid var(--orange);border-radius:7px;color:var(--muted);font-size:12px;line-height:1.5}.callout b{color:var(--text)}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.chart{height:240px}}
+@media(max-width:520px){.wrap{padding:12px}.stats{grid-template-columns:1fr}.term{grid-template-columns:1fr}.chart{height:220px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><div><h1>Nyquist Theorem & Aliasing</h1><p class="sub">Change the analog tone and sampling rate. Watch the Nyquist limit move—and see frequencies above it fold back as false lower frequencies.</p></div><a class="back" href="index.html">← Exercises</a></div>
+
+  <div class="layout">
+    <section class="panel">
+      <canvas id="sourceChart" class="chart" aria-label="Continuous tone with discrete sample points"></canvas>
+      <canvas id="sampleChart" class="chart" aria-label="Frequency represented by the acquired samples"></canvas>
+      <canvas id="foldChart" class="chart fold" aria-label="Frequency folding around the Nyquist frequency"></canvas>
+      <div class="legend">
+        <span class="key"><span class="dot" style="background:#2563eb"></span>Original analog tone</span>
+        <span class="key"><span class="dot" style="background:#ef4444"></span>Sample values</span>
+        <span class="key"><span class="dot" style="background:#22c55e"></span>Frequency represented by the samples</span>
+        <span class="key"><span class="dot" style="background:#f59e0b"></span>Nyquist frequency</span>
+      </div>
+      <div class="callout"><b>Key idea:</b> the sampler only knows the values measured at the red dots. If a high-frequency waveform produces the same sequence of sample values as a lower-frequency waveform, the sampled data cannot distinguish them. That false lower frequency is the alias.</div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h2>Experiment</h2>
+        <div class="control"><label><span>Analog tone frequency</span><b id="toneLabel">20.00 kHz</b></label><input id="tone" type="range" min="1000" max="30000" step="100" value="20000"></div>
+        <div class="control"><label><span>Sampling rate</span><b id="rateLabel">44.10 kHz</b></label><input id="rate" type="range" min="8000" max="60000" step="100" value="44100"></div>
+        <div class="presets"><button class="primary" data-f="20000" data-fs="44100">CD: 20 kHz @ 44.1 kHz</button><button data-f="30000" data-fs="44100">Aliasing: 30 kHz @ 44.1 kHz</button><button data-f="12000" data-fs="20000">12 kHz @ 20 kHz</button></div>
+      </div>
+
+      <div id="status" class="status safe"><strong>Nyquist condition satisfied</strong><span id="statusText"></span></div>
+
+      <div class="card">
+        <h2>Live values</h2>
+        <div class="stats">
+          <div class="stat"><div class="k">Sampling rate</div><div id="fsValue" class="v">44.10 kHz</div><div class="hint">samples per second</div></div>
+          <div class="stat"><div class="k">Nyquist frequency</div><div id="nyquistValue" class="v">22.05 kHz</div><div class="hint">f<sub>N</sub> = f<sub>s</sub>/2</div></div>
+          <div class="stat"><div class="k">Nyquist rate for tone</div><div id="nyquistRateValue" class="v">40.00 kHz</div><div class="hint">2 × tone frequency</div></div>
+          <div class="stat"><div class="k">Apparent frequency</div><div id="aliasValue" class="v">20.00 kHz</div><div class="hint">frequency represented by samples</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Core terminology</h2>
+        <div class="term"><b>Sampling rate</b><span>How many discrete measurements are taken per second. CD audio uses <b>44.1 kHz</b>.</span></div>
+        <div class="term"><b>Nyquist frequency</b><span>Half the sampling rate. It is the upper frequency boundary of the representable baseband: <b>22.05 kHz</b> for 44.1 kHz sampling.</span></div>
+        <div class="term"><b>Nyquist rate</b><span>The minimum ideal sampling rate required for a target maximum frequency: <b>2 × f<sub>max</sub></b>. A 20 kHz tone therefore requires at least 40 kHz in the ideal theorem.</span></div>
+        <div class="term"><b>Aliasing</b><span>Frequencies above the Nyquist frequency fold into the baseband and appear as incorrect lower frequencies.</span></div>
+        <div class="formula">f<sub>N</sub> = f<sub>s</sub>/2 &nbsp;&nbsp; · &nbsp;&nbsp; f<sub>s,min</sub> = 2f<sub>max</sub></div>
+      </div>
+
+      <div class="card">
+        <h2>Practical note</h2>
+        <p class="small">The ideal sampling theorem assumes a band-limited signal. Real acquisition systems use an <b>anti-alias low-pass filter</b> before the ADC so energy above the Nyquist frequency is strongly attenuated before sampling. Practical systems also leave margin around the theoretical boundary.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+<script>
+(()=>{
+'use strict';
+const tone=document.getElementById('tone'), rate=document.getElementById('rate');
+const toneLabel=document.getElementById('toneLabel'), rateLabel=document.getElementById('rateLabel');
+const fsValue=document.getElementById('fsValue'), nyquistValue=document.getElementById('nyquistValue'), nyquistRateValue=document.getElementById('nyquistRateValue'), aliasValue=document.getElementById('aliasValue');
+const status=document.getElementById('status'), statusText=document.getElementById('statusText');
+const source=document.getElementById('sourceChart'), sampled=document.getElementById('sampleChart'), fold=document.getElementById('foldChart');
+const TAU=Math.PI*2;
+function kHz(v,d=2){return `${(v/1000).toFixed(d)} kHz`;}
+function aliasFrequency(f,fs){let r=((f%fs)+fs)%fs;if(r>fs/2)r=fs-r;return r;}
+function setup(canvas){const r=canvas.getBoundingClientRect(),d=Math.max(1,devicePixelRatio||1),w=Math.max(320,r.width),h=Math.max(180,r.height);canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);const c=canvas.getContext('2d');c.setTransform(d,0,0,d,0,0);return {c,w,h};}
+function axes(c,w,h,title,xLabel){const m={l:58,r:20,t:36,b:42};c.fillStyle='#fff';c.fillRect(0,0,w,h);c.fillStyle='#111827';c.font='600 14px system-ui';c.textAlign='center';c.fillText(title,w/2,21);c.strokeStyle='#cbd5e1';c.lineWidth=1;c.beginPath();c.moveTo(m.l,m.t);c.lineTo(m.l,h-m.b);c.lineTo(w-m.r,h-m.b);c.stroke();for(const y of [-1,-.5,0,.5,1]){const py=m.t+(1-y)/2*(h-m.t-m.b);c.strokeStyle=y===0?'#94a3b8':'#e5e7eb';c.beginPath();c.moveTo(m.l,py);c.lineTo(w-m.r,py);c.stroke();c.fillStyle='#64748b';c.font='10px system-ui';c.textAlign='right';c.fillText(String(y),m.l-7,py+3);}c.textAlign='center';c.fillText(xLabel,(m.l+w-m.r)/2,h-10);return m;}
+function drawWave(canvas,f,fs,represented=false){const {c,w,h}=setup(canvas);const title=represented?'What the acquired samples can represent':'Original analog tone and sampling instants';const m=axes(c,w,h,title,'time');const pw=w-m.l-m.r,ph=h-m.t-m.b;const duration=Math.max(.00035,Math.min(.0035,6/f));const fa=aliasFrequency(f,fs);const curveF=represented?fa:f;const xp=t=>m.l+t/duration*pw,yp=v=>m.t+(1-v)/2*ph;
+  c.strokeStyle=represented?'#16a34a':'#2563eb';c.lineWidth=2;c.beginPath();for(let i=0;i<=900;i++){const t=duration*i/900,v=Math.cos(TAU*curveF*t);const x=xp(t),y=yp(v);if(i===0)c.moveTo(x,y);else c.lineTo(x,y);}c.stroke();
+  const nMax=Math.floor(duration*fs);c.strokeStyle='#fecaca';c.lineWidth=.7;for(let n=0;n<=nMax;n++){const t=n/fs,x=xp(t),v=Math.cos(TAU*f*t),y=yp(v);c.beginPath();c.moveTo(x,m.t);c.lineTo(x,h-m.b);c.stroke();c.fillStyle='#ef4444';c.beginPath();c.arc(x,y,4,0,TAU);c.fill();c.strokeStyle='#fff';c.lineWidth=1;c.stroke();c.strokeStyle='#fecaca';c.lineWidth=.7;}
+  c.fillStyle='#475569';c.font='10px system-ui';c.textAlign='left';c.fillText(`window ${(duration*1000).toFixed(2)} ms · ${nMax+1} samples shown`,m.l+5,h-m.b+17);
+  if(represented){c.textAlign='right';c.fillStyle=fa===f?'#15803d':'#b91c1c';c.font='600 12px system-ui';c.fillText(fa===f?`samples represent ${kHz(fa)}`:`alias appears at ${kHz(fa)}`,w-m.r-5,m.t+16);}
+}
+function drawFold(f,fs){const {c,w,h}=setup(fold);const m={l:58,r:20,t:38,b:42},pw=w-m.l-m.r,ph=h-m.t-m.b;const fn=fs/2,fa=aliasFrequency(f,fs),xmax=Math.max(fs*1.08,f*1.12,10000);const xp=v=>m.l+v/xmax*pw;c.fillStyle='#fff';c.fillRect(0,0,w,h);c.fillStyle='#111827';c.font='600 14px system-ui';c.textAlign='center';c.fillText('Frequency-domain view: where aliasing folds back',w/2,21);
+ c.fillStyle='#dcfce7';c.fillRect(m.l,m.t,xp(fn)-m.l,ph);c.fillStyle='#fee2e2';c.fillRect(xp(fn),m.t,(w-m.r)-xp(fn),ph);c.strokeStyle='#cbd5e1';c.beginPath();c.moveTo(m.l,h-m.b);c.lineTo(w-m.r,h-m.b);c.stroke();
+ c.strokeStyle='#f59e0b';c.lineWidth=2;c.setLineDash([6,5]);c.beginPath();c.moveTo(xp(fn),m.t);c.lineTo(xp(fn),h-m.b);c.stroke();c.setLineDash([]);c.fillStyle='#92400e';c.font='600 11px system-ui';c.textAlign='center';c.fillText(`Nyquist ${kHz(fn)}`,xp(fn),m.t-8);
+ c.strokeStyle='#64748b';c.setLineDash([3,4]);c.beginPath();c.moveTo(xp(fs),m.t);c.lineTo(xp(fs),h-m.b);c.stroke();c.setLineDash([]);c.fillStyle='#475569';c.fillText(`fₛ ${kHz(fs,1)}`,xp(fs),h-m.b+17);
+ const y1=m.t+ph*.34,y2=m.t+ph*.68;c.fillStyle='#2563eb';c.beginPath();c.arc(xp(f),y1,6,0,TAU);c.fill();c.textAlign='left';c.fillStyle='#1d4ed8';c.font='600 11px system-ui';c.fillText(` original ${kHz(f)}`,Math.min(w-m.r-110,xp(f)+8),y1+4);
+ c.fillStyle=fa===f?'#16a34a':'#ef4444';c.beginPath();c.arc(xp(fa),y2,6,0,TAU);c.fill();c.fillStyle=fa===f?'#15803d':'#b91c1c';c.fillText(fa===f?` represented ${kHz(fa)}`:` alias ${kHz(fa)}`,xp(fa)+8,y2+4);
+ if(f>fn){c.strokeStyle='#ef4444';c.lineWidth=1.5;c.setLineDash([5,4]);c.beginPath();c.moveTo(xp(f),y1+9);c.quadraticCurveTo((xp(f)+xp(fa))/2,m.t+ph*.5,xp(fa),y2-9);c.stroke();c.setLineDash([]);}
+ c.fillStyle='#166534';c.font='10px system-ui';c.textAlign='left';c.fillText('representable baseband',m.l+7,m.t+15);c.fillStyle='#991b1b';c.textAlign='right';c.fillText('above Nyquist → aliases',w-m.r-7,m.t+15);
+}
+function update(){const f=Number(tone.value),fs=Number(rate.value),fn=fs/2,nr=2*f,fa=aliasFrequency(f,fs);toneLabel.textContent=kHz(f);rateLabel.textContent=kHz(fs);fsValue.textContent=kHz(fs);nyquistValue.textContent=kHz(fn);nyquistRateValue.textContent=kHz(nr);aliasValue.textContent=kHz(fa);
+ status.className='status';if(f<fn*.995){status.classList.add('safe');status.querySelector('strong').textContent='Nyquist condition satisfied';statusText.textContent=`The ${kHz(f)} tone is below the ${kHz(fn)} Nyquist frequency, so it can be represented without frequency aliasing in this ideal example.`;}else if(f<=fn*1.005){status.classList.add('boundary');status.querySelector('strong').textContent='At the Nyquist boundary';statusText.textContent='This is the theoretical edge. Real systems leave margin and use anti-alias filtering rather than operating exactly at the boundary.';}else{status.classList.add('alias');status.querySelector('strong').textContent='Aliasing occurs';statusText.textContent=`The ${kHz(f)} tone is above ${kHz(fn)} and folds back to an apparent frequency of ${kHz(fa)}.`;}
+ drawWave(source,f,fs,false);drawWave(sampled,f,fs,true);drawFold(f,fs);}
+tone.addEventListener('input',update);rate.addEventListener('input',update);document.querySelectorAll('[data-f]').forEach(b=>b.addEventListener('click',()=>{tone.value=b.dataset.f;rate.value=b.dataset.fs;update()}));window.addEventListener('resize',update);update();
+})();
+</script>
+</body>
+</html>

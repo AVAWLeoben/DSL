@@ -1,6 +1,6 @@
 # Exercise Repository — interactive student portal
 
-A GitHub Pages-ready landing page with nine browser-based teaching exercises. Students can open the demos directly in a modern browser; no MATLAB installation is required for the converted exercises.
+A GitHub Pages-ready landing page with eleven browser-based teaching exercises. Students can open the demos directly in a modern browser; no MATLAB installation is required for the converted exercises.
 
 ## Deploy
 
@@ -14,6 +14,7 @@ A GitHub Pages-ready landing page with nine browser-based teaching exercises. St
 | Exercise | File |
 | --- | --- |
 | Sampling rate | `sampling-rate.html` |
+| Nyquist theorem & aliasing | `nyquist-aliasing.html` |
 | Sampling depth | `sampling-depth.html` |
 | NIR sampling depth | `nir-sampling-depth.html` |
 | NIR sampling resolution | `nir-sampling-resolution.html` |
@@ -118,3 +119,16 @@ The portal and new viewer JavaScript are syntax-checked locally. The six cuboid 
 ### HSI cube renderer v3
 
 The ShowMatCube3D page preserves CSS 3D on the 220-slab parent (no filter/opacity grouping on the 3D hierarchy), so the spectral layers retain their physical Z separation in Chromium-based browsers. A separate 2D shadow is used outside the 3D stack.
+
+
+## Nyquist theorem & aliasing
+
+`nyquist-aliasing.html` is an independent time-domain sampling exercise. Students can change the analog tone frequency and sampling rate and observe:
+
+- sampling rate `f_s`,
+- Nyquist frequency `f_N = f_s / 2`,
+- Nyquist rate `2 f_max`,
+- the apparent alias frequency when the tone exceeds the Nyquist limit, and
+- frequency-domain fold-back into the representable baseband.
+
+The CD preset uses 44.1 kHz sampling with a 20 kHz tone; an aliasing preset uses a 30 kHz tone at the same sampling rate, which appears at 14.1 kHz in the sampled data. The page also notes that practical acquisition systems use an anti-alias low-pass filter before the ADC.
