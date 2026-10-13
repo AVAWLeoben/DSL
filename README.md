@@ -138,20 +138,23 @@ The CD preset uses 44.1 kHz sampling with a 20 kHz tone; an aliasing preset uses
 
 ## Fourier transform & FFT
 
-`fourier-spectrum.html` is a self-contained introductory spectral-analysis exercise. It uses a fixed one-second signal sampled at 4096 Hz with 4096 samples. The waveform contains three hidden sinusoidal components.
+`fourier-spectrum.html` is now an interactive Fourier-analysis lab rather than a fixed one-button example.
 
-Students first inspect the composite waveform in the time domain, then run a browser-side radix-2 Cooley–Tukey FFT. The page displays the positive-frequency single-sided amplitude spectrum, detects the three strongest peaks, and lets students reveal the source frequencies and amplitudes for comparison.
+Students can switch among:
 
-The fixed signal is deliberately aligned to 1 Hz FFT bins so the introductory spectrum is clean:
+- an adjustable three-sine mixture,
+- a square wave,
+- a linear chirp,
+- a short pulse, and
+- a real 220-band NIR spectral vector extracted from the supplied `PP.mat` dataset.
 
-- 120 Hz, amplitude 1.00
-- 440 Hz, amplitude 0.55
-- 880 Hz, amplitude 0.30
+For temporal signals, students can change frequencies, amplitudes, sample count, noise level, FFT window, and spectrum scale. After the first FFT is run, parameter changes update the transform live. Students can click the FFT plot to inspect individual bins and compare detected peaks.
 
-The exercise also shows `Δf = f_s / N = 1 Hz` and the 2048 Hz Nyquist frequency, linking directly to the preceding sampling-rate and Nyquist exercises.
+The square-wave, chirp, and pulse cases are included to show that not every signal produces isolated spectral lines. They demonstrate harmonics, distributed spectral energy, and the time–frequency trade-off.
 
-No external FFT library is required at runtime. The page embeds a small pure-JavaScript radix-2 FFT so it remains self-contained on GitHub Pages. A later microphone exercise can reuse the same FFT engine or replace it with a packaged FFT library.
+For the NIR example, the independent variable is spectral band index. The FFT therefore uses units of cycles per band rather than hertz. The page offers raw, mean-centered, and first-derivative preprocessing so students can see that broad spectral trends occupy low Fourier components while rapid band-to-band changes and noise occupy higher components. The page explicitly notes that these Fourier-domain peaks are not chemical absorption wavelengths.
 
+The FFT remains fully browser-side using the embedded radix-2 Cooley–Tukey implementation. Non-power-of-two inputs such as the 220-band NIR spectrum are zero-padded to the next power of two before transformation.
 
 ## FFT audio visualizer
 

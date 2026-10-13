@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Interactive Fourier transform and FFT exercise: reveal the frequency components and amplitudes hidden inside a composite signal.">
-<title>Fourier Transform & FFT · Exercise Repository</title>
+<meta name="description" content="Interactive Fourier transform and FFT lab with sine mixtures, square waves, chirps, pulses and an NIR spectrum.">
+<title>Fourier Transform & FFT Lab · Exercise Repository</title>
 <style>
 :root{
   color-scheme:dark;
@@ -13,49 +13,45 @@
   --orange:#f59e0b;--red:#ef4444;--violet:#a78bfa;--paper:#f8fafc;--ink:#111827;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-.wrap{width:min(1280px,calc(100% - 32px));margin:auto;padding:24px 0 48px}
+body{margin:0;background:radial-gradient(circle at 78% -8%,#11314b 0,transparent 40%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{width:min(1320px,calc(100% - 32px));margin:auto;padding:24px 0 48px}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:30px}
 .brand{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .back{font-size:13px;color:var(--muted);padding:8px 10px;border:1px solid var(--line);border-radius:9px;text-decoration:none}
 .back:hover{color:var(--text);border-color:#52708f}
 .eyebrow{font-size:12px;color:#6ee7b7;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
 h1{font-size:clamp(34px,5vw,58px);line-height:1.04;letter-spacing:-.045em;margin:12px 0 12px}
-.lead{color:var(--muted);max-width:870px;font-size:16px;line-height:1.65;margin:0 0 24px}
-.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.72fr);gap:16px}
+.lead{color:var(--muted);max-width:940px;font-size:16px;line-height:1.65;margin:0 0 24px}
+.signal-picker{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.signal-btn{padding:13px 10px;border:1px solid var(--line);background:#111a27;color:var(--muted);border-radius:12px;cursor:pointer;text-align:left}
+.signal-btn b{display:block;color:var(--text);font-size:13px;margin-bottom:3px}.signal-btn span{font-size:10px;line-height:1.35;display:block}
+.signal-btn.active{border-color:#38bdf8;background:#12314a;box-shadow:0 0 0 1px #38bdf844}
+.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,.72fr);gap:16px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:15px}
 .plot-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 8px}
-.plot-title h2{font-size:15px;margin:0}
-.plot-title span{font-size:11px;color:var(--muted)}
+.plot-title h2{font-size:15px;margin:0}.plot-title span{font-size:11px;color:var(--muted)}
 .canvas-wrap{position:relative;background:var(--paper);border-radius:10px;overflow:hidden;border:1px solid #cbd5e1}
-canvas{display:block;width:100%;height:280px}
-#spectrum{height:330px}
+canvas{display:block;width:100%;height:285px}#spectrum{height:335px}
 .locked{position:absolute;inset:0;display:grid;place-items:center;background:rgba(248,250,252,.94);color:#334155;text-align:center;padding:26px;z-index:2}
-.locked.hidden{display:none}
-.locked strong{display:block;font-size:18px;color:#0f172a;margin-bottom:5px}
-.legend{display:flex;gap:14px;flex-wrap:wrap;margin:9px 0 0;color:var(--muted);font-size:11px}
-.key{display:inline-flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:50%}
+.locked.hidden{display:none}.locked strong{display:block;font-size:18px;color:#0f172a;margin-bottom:5px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:9px 0 0;color:var(--muted);font-size:11px}.key{display:inline-flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:50%}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0 0}
-button{font:inherit;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--text);padding:9px 12px;cursor:pointer}
-button:hover{border-color:#5d7894}button.primary{background:#075985;border-color:#0ea5e9;font-weight:750}
-button.success{background:#14532d;border-color:#22c55e}
-button:disabled{opacity:.5;cursor:not-allowed}
-.side{display:grid;gap:13px;align-content:start}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
-.card h2{font-size:14px;margin:0 0 10px}.small{font-size:12px;color:var(--muted);line-height:1.55}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px}
-.stat span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
-.stat b{display:block;font-size:17px;margin-top:2px}
-.steps{display:grid;gap:10px}.step{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:start}
-.num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#164e63;color:#cffafe;font-size:11px;font-weight:800}
-.step b{font-size:12px}.step p{font-size:11px;color:var(--muted);margin:2px 0 0;line-height:1.45}
-.formula{font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0a111b;border:1px solid #243548;border-radius:8px;padding:10px;overflow:auto;color:#dbeafe}
-.peaks{width:100%;border-collapse:collapse;font-size:12px}.peaks th,.peaks td{padding:7px 6px;border-bottom:1px solid #ffffff12;text-align:right}.peaks th:first-child,.peaks td:first-child{text-align:left}.peaks th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-.answer{display:none;margin-top:9px;padding:9px;border-radius:8px;background:#0e2a20;border:1px solid #256f50;font-size:12px;line-height:1.55}.answer.show{display:block}
+button,select,input{font:inherit}button{border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--text);padding:9px 12px;cursor:pointer}
+button:hover{border-color:#5d7894}button.primary{background:#075985;border-color:#0ea5e9;font-weight:750}button.success{background:#14532d;border-color:#22c55e}
+button:disabled{opacity:.45;cursor:not-allowed}
+.side{display:grid;gap:13px;align-content:start}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}.card h2{font-size:14px;margin:0 0 10px}.small{font-size:12px;color:var(--muted);line-height:1.55}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.control{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px}.control label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.control select,.control input[type="number"]{width:100%;background:#0d1520;color:var(--text);border:1px solid #3b4b60;border-radius:7px;padding:7px}.control input[type="range"]{width:100%}.value{font-size:11px;color:#d7e4f2;margin-top:3px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px}.stat span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.stat b{display:block;font-size:16px;margin-top:2px}
+.mode-controls{display:grid;gap:8px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.slider-box{background:#111a27;border:1px solid var(--line);border-radius:9px;padding:8px}.slider-box label{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-bottom:4px}.slider-box b{color:var(--text)}
 .callout{margin-top:13px;border-left:3px solid var(--cyan);padding:10px 12px;background:#0d1825;color:var(--muted);font-size:12px;line-height:1.55}
-@media(max-width:900px){.layout{grid-template-columns:1fr}}
-@media(max-width:560px){.wrap{width:min(100% - 20px,1280px)}canvas{height:240px}#spectrum{height:280px}.stats{grid-template-columns:1fr 1fr}.topbar{align-items:flex-start}}
+.peaks{width:100%;border-collapse:collapse;font-size:12px}.peaks th,.peaks td{padding:7px 6px;border-bottom:1px solid #ffffff12;text-align:right}.peaks th:first-child,.peaks td:first-child{text-align:left}.peaks th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.readout{padding:10px;border:1px solid #355069;background:#0d1825;border-radius:9px;font-size:12px;color:#dbeafe;line-height:1.55}
+.task{background:#101d2a;border:1px solid #2f536d;border-radius:10px;padding:11px;font-size:12px;line-height:1.55;color:#c6d5e4}.task b{color:#fff}
+.checkline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:8px}.checkline input{accent-color:#38bdf8}
+.note{font-size:11px;color:#8fa1b4;line-height:1.5;margin-top:8px}
+.hidden{display:none!important}
+@media(max-width:1000px){.signal-picker{grid-template-columns:repeat(3,minmax(0,1fr))}.layout{grid-template-columns:1fr}}
+@media(max-width:620px){.wrap{width:min(100% - 20px,1320px)}.signal-picker{grid-template-columns:1fr 1fr}canvas{height:240px}#spectrum{height:290px}.grid2,.row{grid-template-columns:1fr}.topbar{align-items:flex-start}}
 </style>
 </head>
 <body>
@@ -65,96 +61,149 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <a class="back" href="index.html">← Back to exercises</a>
   </div>
 
-  <div class="eyebrow">Fourier transformation · spectral analysis</div>
-  <h1>What frequencies are hidden inside a signal?</h1>
-  <p class="lead">A complicated waveform in the time domain can be built from much simpler sinusoidal components. Run the Fast Fourier Transform (FFT) to convert this fixed signal into a frequency spectrum, where each peak reveals a component frequency and its amplitude.</p>
+  <div class="eyebrow">Fourier transformation · interactive spectral analysis</div>
+  <h1>Change the signal. Watch its spectrum change.</h1>
+  <p class="lead">Fourier analysis becomes more useful once you stop looking at only one waveform. Select different signals, change their parameters, add noise, choose a window, and inspect individual FFT bins. The same mathematics can be applied to temporal signals and to uniformly sampled spectra such as NIR data.</p>
+
+  <div class="signal-picker" id="signalPicker">
+    <button class="signal-btn active" data-mode="mix"><b>Sine mixture</b><span>Three adjustable frequencies and amplitudes</span></button>
+    <button class="signal-btn" data-mode="square"><b>Square wave</b><span>Fundamental plus odd harmonics</span></button>
+    <button class="signal-btn" data-mode="chirp"><b>Chirp</b><span>Frequency changes continuously with time</span></button>
+    <button class="signal-btn" data-mode="pulse"><b>Short pulse</b><span>Time localization produces a broad spectrum</span></button>
+    <button class="signal-btn" data-mode="nir"><b>NIR spectrum</b><span>Real 220-band PP.mat example spectrum</span></button>
+  </div>
 
   <div class="layout">
     <main>
       <section class="panel">
         <div class="plot-title">
-          <h2>1 · Time domain</h2>
-          <span>Amplitude versus time</span>
+          <h2 id="domainTitle">1 · Signal domain</h2>
+          <span id="domainSubtitle">Amplitude versus time</span>
         </div>
-        <div class="canvas-wrap"><canvas id="timePlot" aria-label="Composite time-domain signal"></canvas></div>
+        <div class="canvas-wrap"><canvas id="signalPlot" aria-label="Selected input signal"></canvas></div>
         <div class="legend">
-          <span class="key"><i class="dot" style="background:#2563eb"></i>Composite signal</span>
-          <span id="componentLegend" style="display:none">
+          <span class="key"><i class="dot" style="background:#2563eb"></i><span id="signalLegend">Input signal</span></span>
+          <span id="componentLegend" class="hidden">
             <span class="key"><i class="dot" style="background:#ef4444"></i>Component 1</span>
             <span class="key"><i class="dot" style="background:#22c55e"></i>Component 2</span>
-            <span class="key"><i class="dot" style="background:#a78bfa"></i>Component 3</span>
+            <span class="key"><i class="dot" style="background:#7c3aed"></i>Component 3</span>
           </span>
+          <span id="processedLegend" class="key hidden"><i class="dot" style="background:#f59e0b"></i>FFT input after preprocessing/window</span>
         </div>
         <div class="controls">
-          <button id="playBtn" type="button">▶ Play sample</button>
+          <button id="playBtn" type="button">▶ Play current signal</button>
           <button id="componentsBtn" type="button">Show source components</button>
+          <button id="newNoiseBtn" type="button">New noise realization</button>
         </div>
       </section>
 
       <section class="panel" style="margin-top:16px">
         <div class="plot-title">
-          <h2>2 · Frequency domain</h2>
-          <span>Single-sided FFT amplitude spectrum</span>
+          <h2>2 · Fourier domain</h2>
+          <span id="spectrumSubtitle">Single-sided amplitude spectrum</span>
         </div>
         <div class="canvas-wrap">
-          <canvas id="spectrum" aria-label="FFT amplitude spectrum"></canvas>
-          <div id="locked" class="locked"><div><strong>The frequencies are hidden.</strong>Run the FFT to transform the waveform into a spectrum.</div></div>
+          <canvas id="spectrum" aria-label="FFT spectrum"></canvas>
+          <div id="locked" class="locked"><div><strong>Configure the signal first.</strong>Then run the FFT. After that, changes update the spectrum live.</div></div>
         </div>
         <div class="legend">
-          <span class="key"><i class="dot" style="background:#f59e0b"></i>FFT amplitude</span>
-          <span class="key"><i class="dot" style="background:#ef4444"></i>Detected peak</span>
+          <span class="key"><i class="dot" style="background:#f59e0b"></i>FFT magnitude</span>
+          <span class="key"><i class="dot" style="background:#ef4444"></i>Detected peaks</span>
+          <span class="key"><i class="dot" style="background:#0ea5e9"></i>Clicked FFT bin</span>
         </div>
         <div class="controls">
           <button id="fftBtn" class="primary" type="button">Run FFT</button>
-          <button id="resetBtn" type="button">Reset exercise</button>
+          <button id="resetBtn" type="button">Reset mode</button>
         </div>
-        <div class="callout"><b>Read the spectrum:</b> horizontal position tells you the frequency in hertz. Peak height tells you the amplitude of that frequency component in the original signal.</div>
+        <div class="callout" id="spectrumHelp"><b>Explore:</b> click anywhere in the FFT plot to inspect the nearest frequency bin and its magnitude.</div>
       </section>
     </main>
 
     <aside class="side">
       <section class="card">
-        <h2>Fixed measurement</h2>
+        <h2>Experiment controls</h2>
+        <div class="grid2">
+          <div class="control" id="sampleControl">
+            <label for="sampleCount">Samples N</label>
+            <select id="sampleCount">
+              <option value="512">512</option>
+              <option value="1024" selected>1024</option>
+              <option value="2048">2048</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="windowSelect">Window</label>
+            <select id="windowSelect">
+              <option value="rect">Rectangular</option>
+              <option value="hann" selected>Hann</option>
+              <option value="hamming">Hamming</option>
+              <option value="blackman">Blackman</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="noiseSlider">Noise</label>
+            <input id="noiseSlider" type="range" min="0" max="30" value="0" step="1">
+            <div class="value" id="noiseOut">0%</div>
+          </div>
+          <div class="control">
+            <label for="scaleSelect">Spectrum scale</label>
+            <select id="scaleSelect">
+              <option value="linear" selected>Linear amplitude</option>
+              <option value="db">Decibels (dB)</option>
+            </select>
+          </div>
+        </div>
+        <label class="checkline"><input type="checkbox" id="removeMean" checked> Remove mean / DC before FFT</label>
+        <div id="nirPrepWrap" class="control hidden" style="margin-top:8px">
+          <label for="nirPrep">NIR preprocessing</label>
+          <select id="nirPrep">
+            <option value="raw">Raw spectrum</option>
+            <option value="center">Mean centered</option>
+            <option value="derivative">First derivative</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Signal parameters</h2>
+        <div id="modeControls" class="mode-controls"></div>
+      </section>
+
+      <section class="card">
+        <h2>Measurement</h2>
         <div class="stats">
-          <div class="stat"><span>Sampling rate</span><b>4096 Hz</b></div>
-          <div class="stat"><span>Samples (N)</span><b>4096</b></div>
-          <div class="stat"><span>Duration</span><b>1.00 s</b></div>
-          <div class="stat"><span>Frequency resolution</span><b>1 Hz</b></div>
-          <div class="stat"><span>Nyquist frequency</span><b>2048 Hz</b></div>
-          <div class="stat"><span>Signal components</span><b>3</b></div>
+          <div class="stat"><span id="rateLabel">Sampling rate</span><b id="rateValue">2048 Hz</b></div>
+          <div class="stat"><span>Input samples</span><b id="samplesValue">1024</b></div>
+          <div class="stat"><span>FFT size</span><b id="fftSizeValue">1024</b></div>
+          <div class="stat"><span id="resolutionLabel">Frequency resolution</span><b id="resolutionValue">2 Hz</b></div>
+          <div class="stat"><span id="nyquistLabel">Nyquist frequency</span><b id="nyquistValue">1024 Hz</b></div>
+          <div class="stat"><span>Window</span><b id="windowValue">Hann</b></div>
         </div>
       </section>
 
       <section class="card">
-        <h2>From waveform to spectrum</h2>
-        <div class="steps">
-          <div class="step"><span class="num">1</span><div><b>Measure the signal in time.</b><p>The top graph contains 4096 amplitude samples collected during one second.</p></div></div>
-          <div class="step"><span class="num">2</span><div><b>Apply the Fourier transform.</b><p>The FFT efficiently computes the discrete Fourier transform for this power-of-two sample count.</p></div></div>
-          <div class="step"><span class="num">3</span><div><b>Inspect frequency bins.</b><p>Each FFT bin represents a frequency. Here Δf = f<sub>s</sub>/N = 1 Hz.</p></div></div>
-          <div class="step"><span class="num">4</span><div><b>Find the peaks.</b><p>Large magnitudes identify the frequencies that contribute most strongly to the waveform.</p></div></div>
-        </div>
+        <h2>FFT-bin explorer</h2>
+        <div class="readout" id="binReadout">Run the FFT, then click the spectrum to inspect a bin.</div>
       </section>
 
       <section class="card">
-        <h2>FFT result</h2>
-        <div id="beforePeaks" class="small">Run the FFT. The three strongest non-zero frequency peaks will appear here.</div>
-        <table id="peakTable" class="peaks" style="display:none">
-          <thead><tr><th>Peak</th><th>Frequency</th><th>Amplitude</th></tr></thead>
+        <h2>Strongest peaks</h2>
+        <div id="beforePeaks" class="small">No transform calculated yet.</div>
+        <table id="peakTable" class="peaks hidden">
+          <thead><tr><th>#</th><th id="freqHead">Frequency</th><th>Magnitude</th></tr></thead>
           <tbody></tbody>
         </table>
-        <div id="answer" class="answer"></div>
       </section>
 
       <section class="card">
-        <h2>The mathematics</h2>
-        <div class="formula">X[k] = Σ x[n] · e<sup>−j2πkn/N</sup><br><br>f[k] = k · f<sub>s</sub> / N<br>Δf = f<sub>s</sub> / N = 1 Hz</div>
-        <p class="small">For a real-valued signal the FFT contains mirrored positive and negative frequencies. This exercise plots only the positive half, from 0 Hz to the Nyquist frequency.</p>
+        <h2>Try this</h2>
+        <div id="taskText" class="task"></div>
       </section>
 
       <section class="card">
-        <h2>Teaching note</h2>
-        <p class="small">The waveform may look irregular, but it is only the sum of three pure tones. The FFT does not invent new frequencies—it changes the representation so the components become directly visible.</p>
-        <button id="revealBtn" class="success" type="button" disabled>Reveal source values</button>
+        <h2>What the FFT means here</h2>
+        <p id="conceptText" class="small"></p>
+        <div class="note">The FFT always analyzes variation along the sampled axis. For a time signal that axis is time; for the NIR example it is spectral band index.</div>
       </section>
     </aside>
   </div>
@@ -164,204 +213,406 @@ button:disabled{opacity:.5;cursor:not-allowed}
 (()=>{
 "use strict";
 
-const FS=4096, N=4096, DURATION=N/FS;
-const COMPONENTS=[
-  {f:120,a:1.00,p:0.15},
-  {f:440,a:0.55,p:0.90},
-  {f:880,a:0.30,p:-0.55}
-];
+const NIR_DATA=[1.0, 0.98645, 0.971545, 0.95935, 0.95122, 0.945799, 0.940379, 0.936314, 0.934959, 0.932249, 0.928184, 0.925474, 0.924119, 0.926829, 0.929539, 0.930894, 0.930894, 0.930894, 0.929539, 0.926829, 0.925474, 0.925474, 0.925474, 0.924119, 0.921409, 0.921409, 0.922764, 0.924119, 0.925474, 0.925474, 0.924119, 0.922764, 0.920054, 0.918699, 0.918699, 0.917344, 0.917344, 0.915989, 0.911924, 0.905149, 0.898374, 0.888889, 0.880759, 0.867209, 0.848238, 0.821138, 0.788618, 0.749322, 0.704607, 0.657182, 0.612466, 0.577236, 0.550136, 0.52439, 0.495935, 0.46206, 0.422764, 0.383469, 0.341463, 0.296748, 0.247967, 0.199187, 0.159892, 0.134146, 0.123306, 0.120596, 0.121951, 0.121951, 0.120596, 0.119241, 0.121951, 0.132791, 0.157182, 0.189702, 0.228997, 0.269648, 0.311653, 0.353659, 0.391599, 0.426829, 0.457995, 0.485095, 0.50813, 0.528455, 0.54607, 0.562331, 0.575881, 0.586721, 0.596206, 0.604336, 0.612466, 0.619241, 0.624661, 0.630081, 0.635501, 0.636856, 0.638211, 0.638211, 0.639566, 0.639566, 0.639566, 0.639566, 0.638211, 0.638211, 0.638211, 0.638211, 0.636856, 0.634146, 0.628726, 0.623306, 0.617886, 0.609756, 0.597561, 0.577236, 0.544715, 0.49729, 0.439024, 0.375339, 0.314363, 0.262873, 0.222222, 0.185637, 0.153117, 0.120596, 0.090786, 0.063686, 0.04065, 0.020325, 0.006775, 0.0, 0.004065, 0.01355, 0.025745, 0.036585, 0.042005, 0.047425, 0.054201, 0.063686, 0.073171, 0.081301, 0.086721, 0.092141, 0.098916, 0.105691, 0.115176, 0.126016, 0.136856, 0.147696, 0.158537, 0.169377, 0.180217, 0.189702, 0.200542, 0.210027, 0.219512, 0.227642, 0.234417, 0.241192, 0.246612, 0.250678, 0.257453, 0.265583, 0.279133, 0.292683, 0.307588, 0.322493, 0.333333, 0.342818, 0.350949, 0.357724, 0.365854, 0.375339, 0.386179, 0.397019, 0.405149, 0.410569, 0.414634, 0.414634, 0.414634, 0.414634, 0.414634, 0.414634, 0.414634, 0.411924, 0.406504, 0.401084, 0.397019, 0.392954, 0.387534, 0.380759, 0.373984, 0.367209, 0.359079, 0.349593, 0.341463, 0.333333, 0.325203, 0.318428, 0.311653, 0.302168, 0.291328, 0.276423, 0.258808, 0.238482, 0.216802, 0.195122, 0.178862, 0.166667, 0.158537, 0.151762, 0.147696, 0.146341, 0.144986, 0.142276, 0.138211, 0.132791, 0.127371, 0.120596, 0.112466, 0.104336];
+const FS=2048;
 
-const signal=new Float64Array(N);
-const sources=COMPONENTS.map(()=>new Float64Array(N));
-for(let n=0;n<N;n++){
-  const t=n/FS;
-  let y=0;
-  COMPONENTS.forEach((c,i)=>{
-    const v=c.a*Math.sin(2*Math.PI*c.f*t+c.p);
-    sources[i][n]=v;
-    y+=v;
-  });
-  signal[n]=y;
+const state={
+  mode:"mix", n:1024, window:"hann", noise:0, scale:"linear", removeMean:true,
+  analyzed:false, showComponents:false, noiseSeed:1, selectedBin:null, nirPrep:"raw",
+  mix:{f1:120,a1:1.0,f2:440,a2:.55,f3:780,a3:.3},
+  square:{f:120}, chirp:{f0:80,f1:720}, pulse:{width:35}
+};
+
+const el=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const nextPow2=n=>{let p=1;while(p<n)p<<=1;return p};
+
+function seededNoise(i,seed){
+  let x=(i+1)*12.9898+(seed+1)*78.233;
+  const a=Math.sin(x)*43758.5453;
+  const b=Math.sin(x*1.731+19.19)*24634.6345;
+  return ((a-Math.floor(a))+(b-Math.floor(b)))-1;
 }
 
-function fftRadix2(realInput){
-  const n=realInput.length;
-  if(n<2 || (n & (n-1))!==0) throw new Error("FFT size must be a power of two.");
-  const re=new Float64Array(n), im=new Float64Array(n);
-  for(let i=0;i<n;i++) re[i]=realInput[i];
+function windowArray(n,type){
+  const w=new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const a=2*Math.PI*i/(Math.max(1,n-1));
+    if(type==="hann")w[i]=.5-.5*Math.cos(a);
+    else if(type==="hamming")w[i]=.54-.46*Math.cos(a);
+    else if(type==="blackman")w[i]=.42-.5*Math.cos(a)+.08*Math.cos(2*a);
+    else w[i]=1;
+  }
+  return w;
+}
 
-  let j=0;
-  for(let i=1;i<n;i++){
-    let bit=n>>1;
-    for(;j&bit;bit>>=1) j^=bit;
-    j^=bit;
-    if(i<j){
-      let tr=re[i]; re[i]=re[j]; re[j]=tr;
-      let ti=im[i]; im[i]=im[j]; im[j]=ti;
+function makeTemporal(){
+  const n=state.n, raw=new Float64Array(n), comps=[];
+  if(state.mode==="mix"){
+    for(let j=0;j<3;j++)comps.push(new Float64Array(n));
+    const c=[
+      {f:state.mix.f1,a:state.mix.a1,p:.15},
+      {f:state.mix.f2,a:state.mix.a2,p:.9},
+      {f:state.mix.f3,a:state.mix.a3,p:-.55}
+    ];
+    for(let i=0;i<n;i++){
+      const t=i/FS;let y=0;
+      c.forEach((q,j)=>{const v=q.a*Math.sin(2*Math.PI*q.f*t+q.p);comps[j][i]=v;y+=v});
+      raw[i]=y;
+    }
+  }else if(state.mode==="square"){
+    for(let i=0;i<n;i++)raw[i]=Math.sin(2*Math.PI*state.square.f*i/FS)>=0?1:-1;
+  }else if(state.mode==="chirp"){
+    const T=n/FS,k=(state.chirp.f1-state.chirp.f0)/Math.max(T,1e-9);
+    for(let i=0;i<n;i++){const t=i/FS;raw[i]=Math.sin(2*Math.PI*(state.chirp.f0*t+.5*k*t*t))}
+  }else if(state.mode==="pulse"){
+    const width=Math.max(1,Math.round(state.pulse.width/1000*FS)),c=Math.floor(n*.5);
+    for(let i=0;i<n;i++)raw[i]=Math.abs(i-c)<=width/2?1:0;
+  }
+  return {raw,comps,fs:FS,xLabel:"Time (ms)",xScale:1000/FS,unit:"Hz",rateLabel:"Sampling rate"};
+}
+
+function makeNir(){
+  const raw=Float64Array.from(NIR_DATA);
+  return {raw,comps:[],fs:1,xLabel:"Spectral band index",xScale:1,unit:"cycles/band",rateLabel:"Sampling density"};
+}
+
+function getSource(){
+  return state.mode==="nir"?makeNir():makeTemporal();
+}
+
+function preprocess(src){
+  const raw=src.raw, n=raw.length;
+  let p=Float64Array.from(raw);
+
+  const noiseAmp=state.noise/100;
+  if(noiseAmp>0){
+    let peak=0;for(const v of p)peak=Math.max(peak,Math.abs(v));
+    const scale=Math.max(peak,1)*noiseAmp;
+    for(let i=0;i<n;i++)p[i]+=seededNoise(i,state.noiseSeed)*scale;
+  }
+
+  if(state.mode==="nir"){
+    if(state.nirPrep==="center"){
+      const m=p.reduce((a,b)=>a+b,0)/n;for(let i=0;i<n;i++)p[i]-=m;
+    }else if(state.nirPrep==="derivative"){
+      const d=new Float64Array(n);
+      for(let i=1;i<n;i++)d[i]=p[i]-p[i-1];
+      d[0]=d[1];p=d;
     }
   }
 
+  if(state.removeMean){
+    const m=p.reduce((a,b)=>a+b,0)/n;
+    for(let i=0;i<n;i++)p[i]-=m;
+  }
+
+  const w=windowArray(n,state.window), win=new Float64Array(n);
+  for(let i=0;i<n;i++)win[i]=p[i]*w[i];
+  return {processed:p,windowed:win,window:w};
+}
+
+function fftRadix2(realInput,nfft){
+  const n=nfft,re=new Float64Array(n),im=new Float64Array(n);
+  re.set(realInput.subarray(0,Math.min(realInput.length,n)));
+  let j=0;
+  for(let i=1;i<n;i++){
+    let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;
+    if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}
+  }
   for(let len=2;len<=n;len<<=1){
-    const angle=-2*Math.PI/len;
-    const wlenR=Math.cos(angle), wlenI=Math.sin(angle);
+    const ang=-2*Math.PI/len,wr0=Math.cos(ang),wi0=Math.sin(ang);
     for(let i=0;i<n;i+=len){
-      let wr=1, wi=0;
+      let wr=1,wi=0;
       for(let k=0;k<len/2;k++){
-        const uR=re[i+k], uI=im[i+k];
-        const vr=re[i+k+len/2]*wr-im[i+k+len/2]*wi;
-        const vi=re[i+k+len/2]*wi+im[i+k+len/2]*wr;
-        re[i+k]=uR+vr; im[i+k]=uI+vi;
-        re[i+k+len/2]=uR-vr; im[i+k+len/2]=uI-vi;
-        const nextWr=wr*wlenR-wi*wlenI;
-        wi=wr*wlenI+wi*wlenR;
-        wr=nextWr;
+        const ur=re[i+k],ui=im[i+k],vr=re[i+k+len/2]*wr-im[i+k+len/2]*wi,vi=re[i+k+len/2]*wi+im[i+k+len/2]*wr;
+        re[i+k]=ur+vr;im[i+k]=ui+vi;re[i+k+len/2]=ur-vr;im[i+k+len/2]=ui-vi;
+        const nw=wr*wr0-wi*wi0;wi=wr*wi0+wi*wr0;wr=nw;
       }
     }
   }
   return {re,im};
 }
 
-function singleSidedAmplitude(input){
-  const {re,im}=fftRadix2(input);
-  const half=N/2;
-  const mags=new Float64Array(half+1);
+function spectrumOf(win,window,fs){
+  const n=win.length,nfft=nextPow2(n),{re,im}=fftRadix2(win,nfft),half=nfft/2,mags=new Float64Array(half+1);
+  let sumW=0;for(const v of window)sumW+=v;
+  const norm=Math.max(sumW,1e-12);
   for(let k=0;k<=half;k++){
-    let a=Math.hypot(re[k],im[k])/N;
-    if(k>0 && k<half) a*=2;
+    let a=Math.hypot(re[k],im[k])/norm;
+    if(k>0&&k<half)a*=2;
     mags[k]=a;
   }
-  return mags;
+  return {mags,nfft,df:fs/nfft,nyquist:fs/2};
 }
 
-function findPeaks(mags,count=3){
-  const candidates=[];
+function findPeaks(mags,df,count=6){
+  const arr=[];
   for(let k=1;k<mags.length-1;k++){
-    if(mags[k]>=mags[k-1] && mags[k]>mags[k+1]) candidates.push({k,frequency:k*FS/N,amplitude:mags[k]});
+    if(mags[k]>=mags[k-1]&&mags[k]>mags[k+1])arr.push({k,x:k*df,a:mags[k]});
   }
-  candidates.sort((a,b)=>b.amplitude-a.amplitude);
-  return candidates.slice(0,count).sort((a,b)=>a.frequency-b.frequency);
+  arr.sort((a,b)=>b.a-a.a);
+  return arr.slice(0,count);
 }
 
 function setup(canvas){
-  const r=canvas.getBoundingClientRect(), dpr=Math.max(1,window.devicePixelRatio||1);
-  const w=Math.max(320,r.width), h=Math.max(220,r.height);
-  canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr);
-  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
-  return {ctx,w,h};
+  const r=canvas.getBoundingClientRect(),dpr=Math.max(1,window.devicePixelRatio||1),w=Math.max(320,r.width),h=Math.max(220,r.height);
+  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+  const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);return{ctx,w,h};
 }
-function axes(ctx,w,h,xmin,xmax,ymin,ymax,xLabel,yLabel,title){
-  const m={l:62,r:20,t:34,b:48}, pw=w-m.l-m.r, ph=h-m.t-m.b;
+
+function axes(ctx,w,h,xmin,xmax,ymin,ymax,xLabel,yLabel,title,xFmt=v=>String(Math.round(v)),yFmt=v=>v.toFixed(1)){
+  const m={l:64,r:20,t:34,b:49},pw=w-m.l-m.r,ph=h-m.t-m.b;
   ctx.clearRect(0,0,w,h);ctx.fillStyle="#f8fafc";ctx.fillRect(0,0,w,h);
   ctx.fillStyle="#0f172a";ctx.font="600 13px system-ui";ctx.textAlign="center";ctx.fillText(title,w/2,20);
   ctx.font="11px system-ui";
   for(let i=0;i<=5;i++){
-    const x=m.l+pw*i/5, xv=xmin+(xmax-xmin)*i/5;
+    const x=m.l+pw*i/5,xv=xmin+(xmax-xmin)*i/5;
     ctx.strokeStyle="#e2e8f0";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,m.t);ctx.lineTo(x,m.t+ph);ctx.stroke();
-    ctx.fillStyle="#475569";ctx.textAlign="center";ctx.fillText(Math.round(xv),x,m.t+ph+18);
+    ctx.fillStyle="#475569";ctx.textAlign="center";ctx.fillText(xFmt(xv),x,m.t+ph+18);
   }
   for(let i=0;i<=4;i++){
-    const y=m.t+ph*i/4, yv=ymax-(ymax-ymin)*i/4;
+    const y=m.t+ph*i/4,yv=ymax-(ymax-ymin)*i/4;
     ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(m.l+pw,y);ctx.stroke();
-    ctx.fillStyle="#475569";ctx.textAlign="right";ctx.fillText(yv.toFixed(ymax<=2?1:0),m.l-8,y+4);
+    ctx.fillStyle="#475569";ctx.textAlign="right";ctx.fillText(yFmt(yv),m.l-8,y+4);
   }
   ctx.strokeStyle="#64748b";ctx.strokeRect(m.l,m.t,pw,ph);
   ctx.fillStyle="#334155";ctx.textAlign="center";ctx.fillText(xLabel,m.l+pw/2,h-10);
   ctx.save();ctx.translate(14,m.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText(yLabel,0,0);ctx.restore();
-  return {m,pw,ph,x:v=>m.l+(v-xmin)/(xmax-xmin)*pw,y:v=>m.t+(ymax-v)/(ymax-ymin)*ph};
+  return {m,pw,ph,x:v=>m.l+(v-xmin)/(xmax-xmin)*pw,y:v=>m.t+(ymax-v)/(ymax-ymin)*ph,xmin,xmax};
 }
 
-let showComponents=false, fftDone=false, mags=null, peaks=[];
-function drawTime(){
-  const c=document.getElementById("timePlot"),{ctx,w,h}=setup(c);
-  const ms=50, count=Math.floor(FS*ms/1000);
-  let ymax=0;for(let i=0;i<count;i++)ymax=Math.max(ymax,Math.abs(signal[i]));ymax=Math.max(1.25,ymax*1.12);
-  const g=axes(ctx,w,h,0,ms,-ymax,ymax,"Time (ms)","Amplitude","Composite signal in the time domain");
+let current=null,lastSpectrumGeom=null;
+
+function drawSignal(){
+  const src=getSource(),prep=preprocess(src),c=el("signalPlot"),{ctx,w,h}=setup(c);
+  let ymin=Infinity,ymax=-Infinity;
+  for(const v of src.raw){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v)}
+  if(state.analyzed){
+    for(const v of prep.windowed){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v)}
+  }
+  if(!Number.isFinite(ymin)||ymin===ymax){ymin=-1;ymax=1}
+  const pad=(ymax-ymin)*.12||.2;ymin-=pad;ymax+=pad;
+  const xmax=(src.raw.length-1)*src.xScale;
+  const xLabel=src.xLabel;
+  const title=state.mode==="nir"?"PP.mat NIR spectrum (example pixel)":"Selected signal in the time domain";
+  const xFmt=state.mode==="nir"?v=>String(Math.round(v)):v=>String(Math.round(v));
+  const g=axes(ctx,w,h,0,xmax,ymin,ymax,xLabel,"Amplitude",title,xFmt,v=>Math.abs(v)>=10?v.toFixed(0):v.toFixed(2));
+
   function line(arr,color,width,alpha=1){
     ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineWidth=width;ctx.beginPath();
-    for(let i=0;i<count;i++){const x=g.x(i/FS*1000),y=g.y(arr[i]);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.globalAlpha=1;
+    for(let i=0;i<arr.length;i++){const x=g.x(i*src.xScale),y=g.y(arr[i]);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();ctx.globalAlpha=1;
   }
-  if(showComponents){
-    line(sources[0],"#ef4444",1.2,.75);line(sources[1],"#22c55e",1.2,.75);line(sources[2],"#7c3aed",1.2,.75);
+  if(state.showComponents&&state.mode==="mix"){
+    line(src.comps[0],"#ef4444",1.1,.7);line(src.comps[1],"#22c55e",1.1,.7);line(src.comps[2],"#7c3aed",1.1,.7);
   }
-  line(signal,"#2563eb",2.1,1);
+  line(src.raw,"#2563eb",2,1);
+  if(state.analyzed&&(state.window!=="rect"||state.noise>0||state.removeMean||(state.mode==="nir"&&state.nirPrep!=="raw"))){
+    line(prep.windowed,"#f59e0b",1.35,.85);
+    el("processedLegend").classList.remove("hidden");
+  }else el("processedLegend").classList.add("hidden");
 }
+
 function drawSpectrum(){
-  const c=document.getElementById("spectrum"),{ctx,w,h}=setup(c);
-  const maxF=1200, maxA=1.15;
-  const g=axes(ctx,w,h,0,maxF,0,maxA,"Frequency (Hz)","Amplitude","Single-sided FFT amplitude spectrum");
-  if(!fftDone||!mags)return;
-  ctx.strokeStyle="#f59e0b";ctx.lineWidth=1.8;ctx.beginPath();
-  const maxK=Math.min(mags.length-1,Math.floor(maxF*N/FS));
-  for(let k=0;k<=maxK;k++){const f=k*FS/N,x=g.x(f),y=g.y(mags[k]);if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();
-  ctx.fillStyle="#ef4444";
-  for(const p of peaks){
-    if(p.frequency>maxF)continue;
-    const x=g.x(p.frequency),y=g.y(p.amplitude);
-    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#991b1b";ctx.font="600 11px system-ui";ctx.textAlign="center";ctx.fillText(`${Math.round(p.frequency)} Hz`,x,Math.max(38,y-10));ctx.fillStyle="#ef4444";
+  const c=el("spectrum"),{ctx,w,h}=setup(c);
+  if(!state.analyzed||!current){
+    axes(ctx,w,h,0,1,0,1,"Frequency","Magnitude","FFT spectrum");
+    lastSpectrumGeom=null;return;
   }
+  const {spec,src,peaks}=current;
+  const xmax=spec.nyquist;
+  let vals=Array.from(spec.mags);
+  let ymin=0,ymax=Math.max(...vals,1e-9),yLabel="Amplitude",yFmt=v=>v.toFixed(2);
+  if(state.scale==="db"){
+    vals=vals.map(v=>20*Math.log10(Math.max(v,1e-8)));
+    ymin=Math.max(-100,Math.min(...vals));ymax=Math.max(0,Math.max(...vals)+3);yLabel="Magnitude (dB)";yFmt=v=>v.toFixed(0);
+  }else ymax*=1.12;
+
+  const xLabel=state.mode==="nir"?"Spectral modulation frequency (cycles / band)":"Frequency (Hz)";
+  const xFmt=state.mode==="nir"?v=>v.toFixed(2):v=>String(Math.round(v));
+  const g=axes(ctx,w,h,0,xmax,ymin,ymax,xLabel,yLabel,"Single-sided FFT spectrum",xFmt,yFmt);
+  ctx.strokeStyle="#f59e0b";ctx.lineWidth=1.8;ctx.beginPath();
+  for(let k=0;k<vals.length;k++){const x=g.x(k*spec.df),y=g.y(vals[k]);k?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();
+
+  ctx.fillStyle="#ef4444";
+  for(const p of peaks.slice(0,6)){
+    const pv=state.scale==="db"?20*Math.log10(Math.max(p.a,1e-8)):p.a;
+    const x=g.x(p.x),y=g.y(pv);ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.fill();
+  }
+
+  if(state.selectedBin!=null){
+    const k=clamp(state.selectedBin,0,vals.length-1),x=g.x(k*spec.df);
+    ctx.strokeStyle="#0ea5e9";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,g.m.t);ctx.lineTo(x,g.m.t+g.ph);ctx.stroke();
+    ctx.fillStyle="#0ea5e9";ctx.beginPath();ctx.arc(x,g.y(vals[k]),5,0,Math.PI*2);ctx.fill();
+  }
+  lastSpectrumGeom={...g,w,h,df:spec.df,count:vals.length};
+}
+
+function updateAnalysis(){
+  const src=getSource(),prep=preprocess(src),spec=spectrumOf(prep.windowed,prep.window,src.fs),peaks=findPeaks(spec.mags,spec.df,8);
+  current={src,prep,spec,peaks};state.selectedBin=null;
+  updateMeasurements();updatePeakTable();drawSignal();drawSpectrum();updateBinReadout();
+}
+
+function scheduleUpdate(){
+  drawSignal();updateMeasurements();updateTask();
+  if(state.analyzed)updateAnalysis();
+}
+
+function updateMeasurements(){
+  const src=getSource(),n=src.raw.length,nfft=nextPow2(n),df=src.fs/nfft,ny=src.fs/2;
+  el("rateLabel").textContent=state.mode==="nir"?"Sampling density":"Sampling rate";
+  el("rateValue").textContent=state.mode==="nir"?"1 sample / band":`${FS} Hz`;
+  el("samplesValue").textContent=String(n);
+  el("fftSizeValue").textContent=String(nfft);
+  el("resolutionLabel").textContent=state.mode==="nir"?"FFT-bin spacing":"Frequency resolution";
+  el("resolutionValue").textContent=state.mode==="nir"?`${df.toFixed(4)} cycles/band`:`${df.toFixed(2)} Hz`;
+  el("nyquistLabel").textContent=state.mode==="nir"?"Highest modulation":"Nyquist frequency";
+  el("nyquistValue").textContent=state.mode==="nir"?"0.5 cycles/band":`${ny.toFixed(0)} Hz`;
+  el("windowValue").textContent={rect:"Rectangular",hann:"Hann",hamming:"Hamming",blackman:"Blackman"}[state.window];
 }
 
 function updatePeakTable(){
-  const table=document.getElementById("peakTable"),body=table.querySelector("tbody");
-  body.innerHTML="";
-  peaks.forEach((p,i)=>{
+  const table=el("peakTable"),body=table.querySelector("tbody");body.innerHTML="";
+  if(!current){table.classList.add("hidden");el("beforePeaks").classList.remove("hidden");return}
+  el("freqHead").textContent=state.mode==="nir"?"Modulation":"Frequency";
+  current.peaks.slice(0,6).forEach((p,i)=>{
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${i+1}</td><td>${p.frequency.toFixed(0)} Hz</td><td>${p.amplitude.toFixed(2)}</td>`;
-    body.appendChild(tr);
+    const x=state.mode==="nir"?`${p.x.toFixed(4)} cyc/band`:`${p.x.toFixed(1)} Hz`;
+    tr.innerHTML=`<td>${i+1}</td><td>${x}</td><td>${p.a.toFixed(3)}</td>`;body.appendChild(tr);
   });
-  document.getElementById("beforePeaks").style.display="none";
-  table.style.display="table";
+  el("beforePeaks").classList.add("hidden");table.classList.remove("hidden");
 }
 
-document.getElementById("fftBtn").onclick=()=>{
-  mags=singleSidedAmplitude(signal);
-  peaks=findPeaks(mags,3);
-  fftDone=true;
-  document.getElementById("locked").classList.add("hidden");
-  document.getElementById("revealBtn").disabled=false;
-  updatePeakTable();
-  drawSpectrum();
-};
-document.getElementById("componentsBtn").onclick=e=>{
-  showComponents=!showComponents;
-  e.currentTarget.textContent=showComponents?"Hide source components":"Show source components";
-  document.getElementById("componentLegend").style.display=showComponents?"contents":"none";
-  drawTime();
-};
-document.getElementById("revealBtn").onclick=()=>{
-  const a=document.getElementById("answer");
-  a.classList.add("show");
-  a.innerHTML="<b>Source signal:</b><br>120 Hz at amplitude 1.00<br>440 Hz at amplitude 0.55<br>880 Hz at amplitude 0.30";
-};
-document.getElementById("resetBtn").onclick=()=>{
-  fftDone=false;mags=null;peaks=[];showComponents=false;
-  document.getElementById("locked").classList.remove("hidden");
-  document.getElementById("peakTable").style.display="none";
-  document.getElementById("peakTable").querySelector("tbody").innerHTML="";
-  document.getElementById("beforePeaks").style.display="";
-  document.getElementById("answer").classList.remove("show");
-  document.getElementById("revealBtn").disabled=true;
-  document.getElementById("componentsBtn").textContent="Show source components";
-  document.getElementById("componentLegend").style.display="none";
-  drawTime();drawSpectrum();
-};
-document.getElementById("playBtn").onclick=async()=>{
-  const AudioCtx=window.AudioContext||window.webkitAudioContext;
-  if(!AudioCtx)return;
-  const ac=new AudioCtx();
-  const master=ac.createGain();master.gain.value=.16;master.connect(ac.destination);
-  const now=ac.currentTime;
-  COMPONENTS.forEach(c=>{
-    const o=ac.createOscillator(),g=ac.createGain();
-    o.type="sine";o.frequency.value=c.f;g.gain.value=c.a;
-    o.connect(g);g.connect(master);o.start(now);o.stop(now+.9);
-  });
-  setTimeout(()=>ac.close().catch(()=>{}),1200);
+function updateBinReadout(){
+  if(!current||state.selectedBin==null){el("binReadout").textContent="Run the FFT, then click the spectrum to inspect a bin.";return}
+  const k=state.selectedBin,p=current.spec.mags[k],x=k*current.spec.df;
+  el("binReadout").innerHTML=state.mode==="nir"
+    ?`<b>Bin ${k}</b><br>Spectral modulation: ${x.toFixed(4)} cycles/band<br>Magnitude: ${p.toFixed(4)}`
+    :`<b>Bin ${k}</b><br>Frequency: ${x.toFixed(2)} Hz<br>Magnitude: ${p.toFixed(4)}`;
+}
+
+function rangeControl(label,key,min,max,step,value,unit,obj){
+  const id=`ctl_${key}`;
+  return `<div class="slider-box"><label for="${id}"><span>${label}</span><b id="${id}_out">${value}${unit}</b></label><input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`;
+}
+
+function renderModeControls(){
+  const box=el("modeControls");
+  if(state.mode==="mix"){
+    box.innerHTML=[
+      rangeControl("Frequency 1","f1",40,900,1,state.mix.f1," Hz"),
+      rangeControl("Amplitude 1","a1",0,1.2,.05,state.mix.a1.toFixed(2),""),
+      rangeControl("Frequency 2","f2",40,900,1,state.mix.f2," Hz"),
+      rangeControl("Amplitude 2","a2",0,1.2,.05,state.mix.a2.toFixed(2),""),
+      rangeControl("Frequency 3","f3",40,900,1,state.mix.f3," Hz"),
+      rangeControl("Amplitude 3","a3",0,1.2,.05,state.mix.a3.toFixed(2),""),
+      `<div class="controls"><button id="randomMixBtn" type="button">Randomize mixture</button></div>`
+    ].join("");
+    ["f1","a1","f2","a2","f3","a3"].forEach(k=>{
+      const inp=el(`ctl_${k}`);inp.addEventListener("input",()=>{
+        state.mix[k]=Number(inp.value);el(`ctl_${k}_out`).textContent=k.startsWith("f")?`${inp.value} Hz`:Number(inp.value).toFixed(2);scheduleUpdate();
+      });
+    });
+    el("randomMixBtn").onclick=()=>{
+      const pool=[90,120,160,220,280,340,440,560,680,820],pick=()=>pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+      state.mix.f1=pick();state.mix.f2=pick();state.mix.f3=pick();state.mix.a1=.5+Math.random()*.6;state.mix.a2=.3+Math.random()*.6;state.mix.a3=.2+Math.random()*.5;
+      renderModeControls();scheduleUpdate();
+    };
+  }else if(state.mode==="square"){
+    box.innerHTML=rangeControl("Fundamental frequency","sqf",40,400,1,state.square.f," Hz");
+    el("ctl_sqf").oninput=e=>{state.square.f=Number(e.target.value);el("ctl_sqf_out").textContent=`${e.target.value} Hz`;scheduleUpdate()};
+  }else if(state.mode==="chirp"){
+    box.innerHTML=rangeControl("Start frequency","cf0",20,500,1,state.chirp.f0," Hz")+rangeControl("End frequency","cf1",200,950,1,state.chirp.f1," Hz");
+    el("ctl_cf0").oninput=e=>{state.chirp.f0=Number(e.target.value);el("ctl_cf0_out").textContent=`${e.target.value} Hz`;scheduleUpdate()};
+    el("ctl_cf1").oninput=e=>{state.chirp.f1=Number(e.target.value);el("ctl_cf1_out").textContent=`${e.target.value} Hz`;scheduleUpdate()};
+  }else if(state.mode==="pulse"){
+    box.innerHTML=rangeControl("Pulse width","pw",5,150,1,state.pulse.width," ms");
+    el("ctl_pw").oninput=e=>{state.pulse.width=Number(e.target.value);el("ctl_pw_out").textContent=`${e.target.value} ms`;scheduleUpdate()};
+  }else{
+    box.innerHTML=`<div class="task"><b>Real NIR example</b><br>220 values are taken from one spectral vector in PP.mat (row 150, column 20). Use preprocessing and window controls above to see how broad trends and narrow changes occupy different Fourier components.</div>`;
+  }
+}
+
+function updateModeUi(){
+  const nir=state.mode==="nir";
+  el("sampleControl").classList.toggle("hidden",nir);
+  el("nirPrepWrap").classList.toggle("hidden",!nir);
+  el("playBtn").disabled=nir;
+  el("componentsBtn").classList.toggle("hidden",state.mode!=="mix");
+  el("componentLegend").classList.toggle("hidden",!(state.mode==="mix"&&state.showComponents));
+  el("domainSubtitle").textContent=nir?"Intensity versus spectral band index":"Amplitude versus time";
+  el("spectrumSubtitle").textContent=nir?"FFT across the spectral-band axis":"Single-sided amplitude spectrum";
+  el("signalLegend").textContent=nir?"NIR intensity":"Input signal";
+  el("spectrumHelp").innerHTML=nir
+    ?"<b>Important:</b> this FFT does not convert NIR data into wavelengths. It measures how rapidly the spectrum changes along the band axis. Low Fourier components describe broad trends; higher components describe sharper variation and noise."
+    :"<b>Explore:</b> click anywhere in the FFT plot to inspect the nearest frequency bin and its magnitude.";
+  renderModeControls();updateTask();updateConcept();updateMeasurements();drawSignal();drawSpectrum();
+}
+
+function updateTask(){
+  const map={
+    mix:"<b>Experiment:</b> move one frequency slider and watch one peak move horizontally. Then change only its amplitude and watch the same peak change vertically. Try Randomize mixture and identify the three frequencies from the FFT.",
+    square:"<b>Experiment:</b> change the fundamental frequency. Which additional peaks move with it? A square wave contains odd harmonics: 3f, 5f, 7f… as long as they remain below Nyquist.",
+    chirp:"<b>Experiment:</b> compare a narrow sweep with a wide sweep. Unlike a stationary sine wave, a chirp spreads energy across a frequency range instead of producing one sharp line.",
+    pulse:"<b>Experiment:</b> make the pulse shorter. The signal becomes more localized in time, but its spectrum becomes broader. This time–frequency trade-off is a central Fourier concept.",
+    nir:"<b>Experiment:</b> compare Raw spectrum, Mean centered and First derivative. Then add noise. Notice how broad NIR trends concentrate near zero spectral frequency, while rapid band-to-band changes appear at higher Fourier components."
+  };
+  el("taskText").innerHTML=map[state.mode];
+}
+function updateConcept(){
+  const nir=state.mode==="nir";
+  el("conceptText").innerHTML=nir
+    ?"For the NIR example, the independent variable is <b>spectral band index</b>, not time. The FFT therefore reports <b>cycles per band</b>. It is useful for examining smooth baseline structure, periodic spectral variation, sharp changes and noise—but the FFT peaks are not chemical absorption wavelengths."
+    :"For temporal signals, the independent variable is <b>time</b>. FFT-bin position therefore represents frequency in hertz, while magnitude indicates how strongly that frequency contributes to the sampled waveform.";
+}
+
+function resetMode(){
+  state.analyzed=false;state.selectedBin=null;state.noise=0;state.window="hann";state.scale="linear";state.removeMean=true;state.showComponents=false;state.nirPrep="raw";
+  el("noiseSlider").value=0;el("noiseOut").textContent="0%";el("windowSelect").value="hann";el("scaleSelect").value="linear";el("removeMean").checked=true;el("nirPrep").value="raw";
+  el("locked").classList.remove("hidden");el("fftBtn").textContent="Run FFT";current=null;
+  updateModeUi();updatePeakTable();updateBinReadout();
+}
+
+el("signalPicker").addEventListener("click",e=>{
+  const b=e.target.closest(".signal-btn");if(!b)return;
+  state.mode=b.dataset.mode;document.querySelectorAll(".signal-btn").forEach(x=>x.classList.toggle("active",x===b));resetMode();
+});
+el("sampleCount").onchange=e=>{state.n=Number(e.target.value);scheduleUpdate()};
+el("windowSelect").onchange=e=>{state.window=e.target.value;scheduleUpdate()};
+el("noiseSlider").oninput=e=>{state.noise=Number(e.target.value);el("noiseOut").textContent=`${state.noise}%`;scheduleUpdate()};
+el("scaleSelect").onchange=e=>{state.scale=e.target.value;drawSpectrum()};
+el("removeMean").onchange=e=>{state.removeMean=e.target.checked;scheduleUpdate()};
+el("nirPrep").onchange=e=>{state.nirPrep=e.target.value;scheduleUpdate()};
+el("newNoiseBtn").onclick=()=>{state.noiseSeed++;scheduleUpdate()};
+el("componentsBtn").onclick=()=>{state.showComponents=!state.showComponents;el("componentsBtn").textContent=state.showComponents?"Hide source components":"Show source components";el("componentLegend").classList.toggle("hidden",!state.showComponents);drawSignal()};
+el("fftBtn").onclick=()=>{state.analyzed=true;el("locked").classList.add("hidden");el("fftBtn").textContent="Update FFT";updateAnalysis()};
+el("resetBtn").onclick=resetMode;
+
+el("spectrum").addEventListener("click",e=>{
+  if(!state.analyzed||!current||!lastSpectrumGeom)return;
+  const r=e.currentTarget.getBoundingClientRect(),px=e.clientX-r.left,g=lastSpectrumGeom;
+  const xValue=clamp((px-g.m.l)/g.pw,0,1)*g.xmax;
+  state.selectedBin=clamp(Math.round(xValue/current.spec.df),0,current.spec.mags.length-1);
+  drawSpectrum();updateBinReadout();
+});
+
+el("playBtn").onclick=async()=>{
+  if(state.mode==="nir")return;
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  const ac=new AC(),dur=.8,rate=ac.sampleRate,buf=ac.createBuffer(1,Math.floor(rate*dur),rate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++){
+    const t=i/rate;
+    if(state.mode==="mix")d[i]=.25*(state.mix.a1*Math.sin(2*Math.PI*state.mix.f1*t+.15)+state.mix.a2*Math.sin(2*Math.PI*state.mix.f2*t+.9)+state.mix.a3*Math.sin(2*Math.PI*state.mix.f3*t-.55));
+    else if(state.mode==="square")d[i]=.18*(Math.sin(2*Math.PI*state.square.f*t)>=0?1:-1);
+    else if(state.mode==="chirp"){const k=(state.chirp.f1-state.chirp.f0)/dur;d[i]=.22*Math.sin(2*Math.PI*(state.chirp.f0*t+.5*k*t*t))}
+    else if(state.mode==="pulse"){const c=dur/2,w=state.pulse.width/1000;d[i]=Math.abs(t-c)<w/2?.22:0}
+  }
+  const s=ac.createBufferSource(),g=ac.createGain();g.gain.value=.7;s.buffer=buf;s.connect(g);g.connect(ac.destination);s.start();s.onended=()=>ac.close().catch(()=>{});
 };
 
-window.addEventListener("resize",()=>{drawTime();drawSpectrum()});
-drawTime();drawSpectrum();
+window.addEventListener("resize",()=>{drawSignal();drawSpectrum()});
+updateModeUi();
 })();
 </script>
 </body>
