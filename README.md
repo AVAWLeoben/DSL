@@ -107,3 +107,8 @@ The portal and new viewer JavaScript are syntax-checked locally. The six cuboid 
 ## HSI cube teaching view
 
 `showMatCube3d.html` represents the PP hyperspectral cube as 220 opaque spectral-band sheets. A selected band is pulled out from the stack and a fixed sample pixel (row 97, column 33) is linked to its 220-band intensity spectrum. This is intended to teach the relationship between spatial band images and a pixel spectrum rather than imitate MATLAB volume-rendering aesthetics.
+
+
+### HSI cube teaching viewer
+
+`showMatCube3d.html` renders all 220 bands as thin 3D slabs with visible side edges. The default view keeps the bands packed into one cuboid; the layer-separation control opens small gaps, and the selected band can be pulled out while its chosen pixel is linked to the spectrum chart.
