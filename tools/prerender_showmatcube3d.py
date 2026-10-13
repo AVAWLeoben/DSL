@@ -1,62 +1,68 @@
 #!/usr/bin/env python3
-"""Pre-render ShowMatCube3D turntable atlases from a MATLAB imnData cube.
+"""Create lightweight face textures for the ShowMatCube3D browser cuboid.
 
 Usage:
-    python prerender_showmatcube3d.py PP.mat output_directory
+    python tools/prerender_showmatcube3d.py PP.mat assets/showmatcube3d
 
-The MATLAB reference normalizes the volume as imnData / max(imnData(:)).
-This script preserves that normalization, then renders maximum-intensity
-projections with a fixed visibility transfer function for classroom viewing.
+The source MATLAB exercise loads ``imnData`` and normalizes it by its global
+maximum before calling ``volshow``.  The browser exercise does not try to
+volume-render the complete array.  Instead this script prepares six textures:
+
+* front/back: false-colour spatial composites from selected spectral bands
+* left/right: Y-versus-spectral cross-sections
+* top/bottom: X-versus-spectral cross-sections
+
+The web page maps those images onto a rotatable CSS 3D cuboid.
 """
 from __future__ import annotations
+
 import argparse
+import colorsys
 from pathlib import Path
-import math
+
 import numpy as np
-from scipy.io import loadmat
-from scipy.ndimage import rotate
 from PIL import Image
-
-AZIMUTHS = list(range(0, 360, 10))
-ELEVATIONS = [-20, 0, 20]
-FRAME = 420
-GRID_COLS = 6
-GRID_ROWS = 6
-DISPLAY_LOW = 0.075
-DISPLAY_HIGH = 0.70
-DISPLAY_GAMMA = 0.75
-VOXEL_SCALE = 0.95
+from scipy.io import loadmat
 
 
-def render_frame(volume: np.ndarray, azimuth: float, elevation: float) -> Image.Image:
-    # MATLAB array is [rows, columns, pages]. Keep rows vertical, rotate columns/pages.
-    r = rotate(volume, azimuth, axes=(1, 2), reshape=True, order=1,
-               mode="constant", cval=0.0, prefilter=False)
-    if elevation:
-        r = rotate(r, elevation, axes=(0, 2), reshape=True, order=1,
-                   mode="constant", cval=0.0, prefilter=False)
+def stretch(a: np.ndarray, low: float = 2.0, high: float = 98.0) -> np.ndarray:
+    a = np.asarray(a, dtype=np.float32)
+    lo, hi = np.nanpercentile(a, [low, high])
+    if not np.isfinite(lo):
+        lo = 0.0
+    if not np.isfinite(hi) or hi <= lo:
+        hi = lo + 1.0
+    return np.clip((a - lo) / (hi - lo), 0.0, 1.0)
 
-    # Maximum-intensity projection along the viewing/depth axis.
-    mip = r.max(axis=2)
-    d = np.clip((mip - DISPLAY_LOW) / (DISPLAY_HIGH - DISPLAY_LOW), 0.0, 1.0)
-    d = np.power(d, DISPLAY_GAMMA)
-    u8 = np.round(d * 255).astype(np.uint8)
-    im = Image.fromarray(u8, mode="L")
 
-    # Constant voxel-to-pixel scale across all views preserves apparent geometry.
-    w = max(1, int(round(im.width * VOXEL_SCALE)))
-    h = max(1, int(round(im.height * VOXEL_SCALE)))
-    im = im.resize((w, h), Image.Resampling.BILINEAR)
+def band_triplet(n_bands: int, fractions: tuple[float, float, float]) -> list[int]:
+    return [min(n_bands - 1, max(0, int(round((n_bands - 1) * f)))) for f in fractions]
 
-    # Fit any tilted frame if needed, preserving aspect ratio.
-    max_inner = FRAME - 28
-    if im.width > max_inner or im.height > max_inner:
-        s = min(max_inner / im.width, max_inner / im.height)
-        im = im.resize((max(1, int(im.width*s)), max(1, int(im.height*s))), Image.Resampling.BILINEAR)
 
-    canvas = Image.new("L", (FRAME, FRAME), 0)
-    canvas.paste(im, ((FRAME - im.width)//2, (FRAME - im.height)//2))
-    return canvas
+def spatial_false_colour(cube: np.ndarray, bands: list[int]) -> np.ndarray:
+    rgb = np.stack([stretch(cube[:, :, b]) for b in bands], axis=-1)
+    rgb = np.power(rgb, 0.82)
+    return np.round(rgb * 255.0).astype(np.uint8)
+
+
+def spectral_cross_section(section: np.ndarray) -> np.ndarray:
+    """Colour the last axis by spectral order and modulate it by intensity."""
+    sec = stretch(section)
+    bands = sec.shape[-1]
+    base = np.empty((bands, 3), dtype=np.float32)
+    for i in range(bands):
+        # False-colour band ordering from blue to red. This is not a wavelength
+        # calibration; it is only a visual encoding of spectral position.
+        hue = 0.67 * (1.0 - i / max(1, bands - 1))
+        base[i] = colorsys.hsv_to_rgb(hue, 0.82, 1.0)
+    value = 0.12 + 0.88 * np.power(sec, 0.72)
+    rgb = value[..., None] * base[None, :, :]
+    return np.round(np.clip(rgb, 0.0, 1.0) * 255.0).astype(np.uint8)
+
+
+def save_webp(array: np.ndarray, path: Path, size: tuple[int, int]) -> None:
+    image = Image.fromarray(array).resize(size, Image.Resampling.LANCZOS)
+    image.save(path, "WEBP", quality=90, method=6)
 
 
 def main() -> None:
@@ -68,42 +74,45 @@ def main() -> None:
     mat = loadmat(args.mat_file)
     if "imnData" not in mat:
         raise SystemExit("MAT file does not contain 'imnData'.")
+
     raw = np.asarray(mat["imnData"])
     if raw.ndim != 3:
         raise SystemExit(f"imnData must be 3D, got {raw.shape}.")
-    raw = raw.astype(np.float32, copy=False)
-    max_value = float(np.nanmax(raw))
-    if not math.isfinite(max_value) or max_value <= 0:
-        raise SystemExit("imnData has no positive finite maximum.")
-    volume = np.nan_to_num(raw / max_value, nan=0.0, posinf=0.0, neginf=0.0)
+
+    cube = raw.astype(np.float32, copy=False)
+    rows, cols, bands = cube.shape
+    if min(rows, cols, bands) < 2:
+        raise SystemExit(f"Cube is too small for a 3D representation: {cube.shape}.")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    for elev in ELEVATIONS:
-        atlas = Image.new("L", (GRID_COLS*FRAME, GRID_ROWS*FRAME), 0)
-        for i, az in enumerate(AZIMUTHS):
-            frame = render_frame(volume, az, elev)
-            x = (i % GRID_COLS) * FRAME
-            y = (i // GRID_COLS) * FRAME
-            atlas.paste(frame, (x, y))
-        sign = "m" if elev < 0 else "p" if elev > 0 else "0"
-        suffix = f"{sign}{abs(elev)}" if elev != 0 else "0"
-        out = args.output_dir / f"pp_cube_elev_{suffix}.webp"
-        atlas.save(out, "WEBP", quality=84, method=6)
-        print(out, out.stat().st_size)
 
-    manifest = args.output_dir / "README.txt"
-    manifest.write_text(
-        "Pre-rendered PP.mat turntable assets for showMatCube3d.html\n"
-        f"Source imnData shape: {tuple(raw.shape)}\n"
-        f"Source maximum: {max_value:g}\n"
-        "Normalization: imnData / max(imnData)\n"
-        f"Azimuths: 0..350 degrees in 10 degree steps ({len(AZIMUTHS)} frames)\n"
-        f"Elevations: {ELEVATIONS}\n"
-        f"Atlas grid: {GRID_COLS} x {GRID_ROWS}, frame {FRAME} x {FRAME}px\n"
-        "Projection: maximum-intensity projection after 3D rotation\n"
-        f"Display transfer: clip((I-{DISPLAY_LOW})/({DISPLAY_HIGH}-{DISPLAY_LOW}),0,1)^{DISPLAY_GAMMA}\n",
-        encoding="utf-8"
-    )
+    front_bands = band_triplet(bands, (0.83, 0.49, 0.15))
+    back_bands = band_triplet(bands, (0.93, 0.59, 0.24))
+
+    front = spatial_false_colour(cube, front_bands)
+    back = spatial_false_colour(cube, back_bands)
+
+    # Cross-sections are taken inside the cube rather than at the extreme image
+    # border, because the specimen does not necessarily occupy the outer pixels.
+    left = spectral_cross_section(cube[:, int(round((cols - 1) * 0.33)), :])
+    right = spectral_cross_section(cube[:, int(round((cols - 1) * 0.67)), :])
+    top = spectral_cross_section(cube[int(round((rows - 1) * 0.33)), :, :]).transpose(1, 0, 2)
+    bottom = spectral_cross_section(cube[int(round((rows - 1) * 0.67)), :, :]).transpose(1, 0, 2)
+
+    save_webp(front, args.output_dir / "front.webp", (440, 624))
+    save_webp(back, args.output_dir / "back.webp", (440, 624))
+    save_webp(left, args.output_dir / "left.webp", (180, 624))
+    save_webp(right, args.output_dir / "right.webp", (180, 624))
+    save_webp(top, args.output_dir / "top.webp", (440, 180))
+    save_webp(bottom, args.output_dir / "bottom.webp", (440, 180))
+
+    max_value = float(np.nanmax(cube))
+    print(f"imnData shape: {cube.shape}")
+    print(f"source maximum: {max_value:g}")
+    print(f"front bands (R,G,B): {front_bands}")
+    print(f"back bands  (R,G,B): {back_bands}")
+    print(f"wrote six WebP cuboid textures to: {args.output_dir}")
+
 
 if __name__ == "__main__":
     main()
