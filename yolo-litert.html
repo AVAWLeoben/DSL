@@ -24,7 +24,12 @@ input[type=range],select,input[type=file]{width:100%}.stats{display:grid;grid-te
 .status{margin-top:10px;background:#11151c;border:1px solid var(--border);border-radius:8px;padding:9px;font-size:12px;line-height:1.45;white-space:pre-wrap;max-height:190px;overflow:auto}
 .note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}kbd{background:#11151c;border:1px solid #475569;border-radius:4px;padding:1px 5px;color:#e5e7eb}
 .badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#11151c;border:1px solid var(--border);font-size:12px}
-@media(max-width:950px){.layout{grid-template-columns:1fr}}@media(max-width:560px){.controls,.stats{grid-template-columns:1fr}}
+.cameraPicker{margin-top:10px;background:#11151c;border:1px solid var(--border);border-radius:10px;padding:10px}
+.cameraPicker[hidden]{display:none}.cameraPickerHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.cameraPickerHead b{font-size:13px}.cameraPickerHead span{font-size:11px;color:var(--muted)}
+.cameraGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.cameraCard{appearance:none;text-align:left;background:#1b2029;border:1px solid #394353;border-radius:10px;padding:11px;min-height:84px;color:var(--text);position:relative;display:block;width:100%}
+.cameraCard:hover{filter:none;border-color:#5d7089;background:#202733}.cameraCard.active{border-color:#38bdf8;background:#102b3b;box-shadow:0 0 0 1px #38bdf855}.cameraCard:disabled{opacity:.58;cursor:wait}
+.cameraCardTop{display:flex;align-items:center;justify-content:space-between;gap:8px}.cameraCardTitle{font-weight:750;font-size:13px;line-height:1.25}.cameraCardMeta{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.35;word-break:break-word}.cameraTag{display:inline-block;border:1px solid #496276;background:#111a24;border-radius:999px;padding:2px 6px;font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:#c8d6e4;white-space:nowrap}.cameraCard.active .cameraTag{border-color:#38bdf8;color:#b8efff}.cameraEmpty{grid-column:1/-1;color:var(--muted);font-size:12px;padding:8px}
+@media(max-width:950px){.layout{grid-template-columns:1fr}}@media(max-width:560px){.controls,.stats{grid-template-columns:1fr}.cameraGrid{grid-template-columns:1fr 1fr}.cameraCard{min-height:92px;padding:10px}}@media(max-width:390px){.cameraGrid{grid-template-columns:1fr}}
 </style>
 <script type="importmap">
 {"imports":{
@@ -47,9 +52,13 @@ input[type=range],select,input[type=file]{width:100%}.stats{display:grid;grid-te
 <div id="loadingOverlay" class="loadingOverlay"><div class="loadingCard"><div class="spinner"></div><div id="loadingTitle" class="loadingTitle">Loading LiteRT model…</div><div id="loadingText" class="loadingText">Preparing WebGPU</div></div></div>
 </div>
 <div class="buttons">
-<button id="cameraBtn" class="primary">Start webcam</button><button id="switchCameraBtn" disabled>Switch camera</button><button id="stopBtn">Stop webcam</button><button id="pauseBtn">Pause inference</button><button id="clearBtn">Clear boxes</button>
+<button id="cameraBtn" class="primary">Start webcam</button><button id="cameraPickerBtn" disabled>Choose camera</button><button id="stopBtn">Stop webcam</button><button id="pauseBtn">Pause inference</button><button id="clearBtn">Clear boxes</button>
 </div>
-<div class="note">On phones, <b>Switch camera</b> cycles available front/rear cameras. Keyboard: <kbd>o</kbd>/<kbd>p</kbd> previous/next model, <kbd>+</kbd>/<kbd>-</kbd> image size, <kbd>c</kbd>/<kbd>v</kbd> confidence, <kbd>Esc</kbd> pause inference.</div>
+<div id="cameraPicker" class="cameraPicker" hidden>
+  <div class="cameraPickerHead"><div><b>Available cameras</b><br><span id="cameraPickerSummary">Select a camera or lens.</span></div><button id="cameraPickerClose" type="button">Close</button></div>
+  <div id="cameraGrid" class="cameraGrid" role="list" aria-label="Available cameras"></div>
+</div>
+<div class="note">On phones, <b>Choose camera</b> lists every camera exposed by the browser, including separate wide, ultra-wide and telephoto devices where available. Keyboard: <kbd>o</kbd>/<kbd>p</kbd> previous/next model, <kbd>+</kbd>/<kbd>-</kbd> image size, <kbd>c</kbd>/<kbd>v</kbd> confidence, <kbd>Esc</kbd> pause inference.</div>
 </section>
 
 <aside class="panel">
@@ -89,13 +98,13 @@ input[type=range],select,input[type=file]{width:100%}.stats{display:grid;grid-te
 let YOLO=null,runtimeError=null;
 const $=id=>document.getElementById(id);
 const els={stage:$("stage"),video:$("video"),stillView:$("stillView"),overlay:$("overlay"),loadingOverlay:$("loadingOverlay"),loadingTitle:$("loadingTitle"),loadingText:$("loadingText"),
-cameraBtn:$("cameraBtn"),switchCameraBtn:$("switchCameraBtn"),stopBtn:$("stopBtn"),pauseBtn:$("pauseBtn"),clearBtn:$("clearBtn"),imageFile:$("imageFile"),modelSelect:$("modelSelect"),imgSize:$("imgSize"),
+cameraBtn:$("cameraBtn"),cameraPickerBtn:$("cameraPickerBtn"),cameraPicker:$("cameraPicker"),cameraPickerClose:$("cameraPickerClose"),cameraPickerSummary:$("cameraPickerSummary"),cameraGrid:$("cameraGrid"),stopBtn:$("stopBtn"),pauseBtn:$("pauseBtn"),clearBtn:$("clearBtn"),imageFile:$("imageFile"),modelSelect:$("modelSelect"),imgSize:$("imgSize"),
 conf:$("conf"),confVal:$("confVal"),iou:$("iou"),iouVal:$("iouVal"),modelStat:$("modelStat"),deviceStat:$("deviceStat"),loadStat:$("loadStat"),preStat:$("preStat"),inferStat:$("inferStat"),
 postStat:$("postStat"),wallStat:$("wallStat"),detStat:$("detStat"),cacheStat:$("cacheStat"),gpuStat:$("gpuStat"),status:$("status")};
 
 const ctx=els.overlay.getContext("2d");
 let stream=null,stillImage=null,sourceMode="none",running=true,busy=false;
-let cameraDevices=[],activeCameraDeviceId=null,preferredFacing="user",cameraSwitchBusy=false;
+let cameraDevices=[],activeCameraDeviceId=null,preferredFacing="user",cameraSelectionBusy=false;
 let catalog=new Map(),modelCache=new Map();
 // Put these files in a models/ folder next to index.html.
 // Edit this list if you add/remove model files.
@@ -137,10 +146,11 @@ loadRuntime();els.gpuStat.textContent=navigator.gpu?"Available":"Unavailable";
 
 async function refreshCameraDevices(){
  try{
-  if(!navigator.mediaDevices?.enumerateDevices){cameraDevices=[];return cameraDevices}
+  if(!navigator.mediaDevices?.enumerateDevices){cameraDevices=[];renderCameraCards();return cameraDevices}
   const devices=await navigator.mediaDevices.enumerateDevices();
   cameraDevices=devices.filter(d=>d.kind==="videoinput");
  }catch{cameraDevices=[]}
+ renderCameraCards();
  return cameraDevices
 }
 function currentCameraInfo(){
@@ -148,14 +158,47 @@ function currentCameraInfo(){
  const settings=track?.getSettings?.()||{};
  return {track,deviceId:settings.deviceId||activeCameraDeviceId||null,facingMode:settings.facingMode||preferredFacing||null,label:track?.label||""}
 }
+function cameraKind(label="",facing=""){
+ const x=`${label} ${facing}`.toLowerCase();
+ if(/front|facetime|selfie|\buser\b/.test(x))return {facing:"Front",lens:"Front camera"};
+ let lens="Rear camera";
+ if(/ultra[ -]?wide|ultrawide/.test(x))lens="Ultra-wide";
+ else if(/telephoto|tele\b/.test(x))lens="Telephoto";
+ else if(/wide/.test(x))lens="Wide";
+ else if(/triple/.test(x))lens="Triple camera";
+ else if(/dual/.test(x))lens="Dual camera";
+ if(/back|rear|environment|wide|telephoto|triple|dual/.test(x))return {facing:"Rear",lens};
+ return {facing:"Camera",lens:"Camera"}
+}
 function cameraDescription(){
  const info=currentCameraInfo();
  const idx=info.deviceId?cameraDevices.findIndex(d=>d.deviceId===info.deviceId):-1;
  const dev=idx>=0?cameraDevices[idx]:null;
  const label=dev?.label||info.label||((idx>=0)?`Camera ${idx+1}`:"Camera");
- const facing=info.facingMode?` · ${info.facingMode}`:"";
- return `${label}${facing}`
+ const kind=cameraKind(label,info.facingMode);
+ return `${label}${kind.facing!=="Camera"?` · ${kind.facing}`:""}`
 }
+function renderCameraCards(){
+ if(!els.cameraGrid)return;
+ els.cameraGrid.innerHTML="";
+ const info=currentCameraInfo();
+ const activeId=info.deviceId||activeCameraDeviceId;
+ els.cameraPickerSummary.textContent=cameraDevices.length?`${cameraDevices.length} camera${cameraDevices.length===1?"":"s"} exposed by this browser.`:"No camera list is available yet.";
+ if(!cameraDevices.length){
+  const empty=document.createElement("div");empty.className="cameraEmpty";empty.textContent=stream?"The browser did not expose individual camera devices. You can continue using the active camera.":"Start the webcam first so the browser can reveal available camera devices.";els.cameraGrid.appendChild(empty);return
+ }
+ cameraDevices.forEach((dev,index)=>{
+  const kind=cameraKind(dev.label,"");
+  const active=!!activeId&&dev.deviceId===activeId;
+  const card=document.createElement("button");
+  card.type="button";card.className=`cameraCard${active?" active":""}`;card.dataset.deviceId=dev.deviceId;card.setAttribute("role","listitem");card.disabled=cameraSelectionBusy;
+  const title=dev.label||`${kind.facing!=="Camera"?kind.facing:"Camera"} ${index+1}`;
+  card.innerHTML=`<div class="cameraCardTop"><span class="cameraCardTitle">${escapeHtml(title)}</span><span class="cameraTag">${active?"Active":escapeHtml(kind.lens)}</span></div><div class="cameraCardMeta">${active?"Currently in use · ":""}${escapeHtml(kind.facing)}${dev.label?` · Camera ${index+1}`:""}</div>`;
+  card.addEventListener("click",()=>selectCameraDevice(dev));
+  els.cameraGrid.appendChild(card)
+ })
+}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
 async function openCamera(videoConstraints){
  if(!navigator.mediaDevices?.getUserMedia)throw new Error("getUserMedia unavailable. Use HTTPS or localhost.");
  if(stream){for(const t of stream.getTracks())t.stop();stream=null;els.video.srcObject=null}
@@ -170,49 +213,44 @@ async function openCamera(videoConstraints){
  await els.video.play();sourceMode="camera";els.video.style.display="block";els.stillView.style.display="none";
  const info=currentCameraInfo();activeCameraDeviceId=info.deviceId;if(info.facingMode)preferredFacing=info.facingMode;
  await refreshCameraDevices();
- els.switchCameraBtn.disabled=false;
+ els.cameraPickerBtn.disabled=false;
  setStageSize(els.video.videoWidth,els.video.videoHeight);
- status(`Webcam connected: ${els.video.videoWidth}×${els.video.videoHeight}
-${cameraDescription()}${cameraDevices.length>1?` · ${cameraDevices.length} cameras available`:""}`)
+ status(`Webcam connected: ${els.video.videoWidth}×${els.video.videoHeight}\n${cameraDescription()}${cameraDevices.length>1?` · ${cameraDevices.length} cameras available`:""}`)
 }
 async function startCamera(){
  try{
   status("Requesting webcam permission…");
   await openCamera({width:{ideal:1280},height:{ideal:720},facingMode:{ideal:preferredFacing}})
- }catch(e){status(`Camera error:
-${e?.stack||e}`)}
+ }catch(e){status(`Camera error:\n${e?.stack||e}`)}
 }
-async function switchCamera(){
- if(cameraSwitchBusy)return;cameraSwitchBusy=true;els.switchCameraBtn.disabled=true;
+async function selectCameraDevice(dev){
+ if(cameraSelectionBusy||!dev?.deviceId)return;
+ const previous=currentCameraInfo();cameraSelectionBusy=true;renderCameraCards();els.cameraPickerBtn.disabled=true;
  try{
-  if(!stream){await startCamera();return}
-  await refreshCameraDevices();
-  const info=currentCameraInfo();
-  let switched=false,lastError=null;
-  if(cameraDevices.length>1){
-   let idx=cameraDevices.findIndex(d=>d.deviceId===info.deviceId);if(idx<0)idx=0;
-   const next=cameraDevices[(idx+1)%cameraDevices.length];
-   try{status(`Switching camera…
-${next.label||`Camera ${(idx+1)%cameraDevices.length+1}`}`);await openCamera({width:{ideal:1280},height:{ideal:720},deviceId:{exact:next.deviceId}});switched=true}catch(e){lastError=e}
-  }
-  if(!switched){
-   const oldFacing=info.facingMode||preferredFacing||"user";
-   const nextFacing=oldFacing==="environment"?"user":"environment";
-   try{status(`Switching to ${nextFacing} camera…`);preferredFacing=nextFacing;await openCamera({width:{ideal:1280},height:{ideal:720},facingMode:{exact:nextFacing}});switched=true}catch(e){lastError=e;preferredFacing=oldFacing}
-  }
-  if(!switched){
-   try{
-    const fallback={width:{ideal:1280},height:{ideal:720}};
-    if(info.deviceId)fallback.deviceId={exact:info.deviceId};else if(info.facingMode)fallback.facingMode={ideal:info.facingMode};
-    await openCamera(fallback)
-   }catch(recoverError){throw lastError||recoverError}
-   throw lastError||new Error("No alternate camera was found on this device.")
-  }
- }catch(e){status(`Could not switch camera:
-${e?.message||e}`)}finally{cameraSwitchBusy=false;els.switchCameraBtn.disabled=!stream}
+  status(`Opening camera…\n${dev.label||"Selected camera"}`);
+  await openCamera({width:{ideal:1280},height:{ideal:720},deviceId:{exact:dev.deviceId}});
+  activeCameraDeviceId=dev.deviceId;renderCameraCards()
+ }catch(e){
+  status(`Could not open that camera:\n${e?.message||e}\nRestoring the previous camera…`);
+  try{
+   const fallback={width:{ideal:1280},height:{ideal:720}};
+   if(previous.deviceId)fallback.deviceId={exact:previous.deviceId};else if(previous.facingMode)fallback.facingMode={ideal:previous.facingMode};
+   await openCamera(fallback)
+  }catch(recover){status(`Camera selection failed:\n${e?.message||e}\nRecovery also failed: ${recover?.message||recover}`)}
+ }finally{cameraSelectionBusy=false;els.cameraPickerBtn.disabled=!stream;renderCameraCards()}
 }
-function stopCamera(){if(stream)for(const t of stream.getTracks())t.stop();stream=null;activeCameraDeviceId=null;els.video.srcObject=null;els.switchCameraBtn.disabled=true;if(sourceMode==="camera")sourceMode=stillImage?"image":"none"}
-els.cameraBtn.onclick=()=>startCamera();els.switchCameraBtn.onclick=()=>switchCamera();els.stopBtn.onclick=()=>{stopCamera();status("Webcam stopped.")};els.pauseBtn.onclick=()=>{running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference";status(running?"Inference resumed.":"Inference paused. Webcam remains live.")};els.clearBtn.onclick=clearBoxes;
+async function toggleCameraPicker(){
+ if(!stream){await startCamera();if(!stream)return}
+ await refreshCameraDevices();
+ els.cameraPicker.hidden=!els.cameraPicker.hidden;
+ if(!els.cameraPicker.hidden)renderCameraCards()
+}
+function stopCamera(){
+ if(stream)for(const t of stream.getTracks())t.stop();
+ stream=null;activeCameraDeviceId=null;els.video.srcObject=null;els.cameraPickerBtn.disabled=true;els.cameraPicker.hidden=true;renderCameraCards();
+ if(sourceMode==="camera")sourceMode=stillImage?"image":"none"
+}
+els.cameraBtn.onclick=()=>startCamera();els.cameraPickerBtn.onclick=()=>toggleCameraPicker();els.cameraPickerClose.onclick=()=>{els.cameraPicker.hidden=true};els.stopBtn.onclick=()=>{stopCamera();status("Webcam stopped.")};els.pauseBtn.onclick=()=>{running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference";status(running?"Inference resumed.":"Inference paused. Webcam remains live.")};els.clearBtn.onclick=clearBoxes;
 if(navigator.mediaDevices?.addEventListener)navigator.mediaDevices.addEventListener("devicechange",()=>refreshCameraDevices());
 
 els.imageFile.onchange=async()=>{const f=els.imageFile.files?.[0];if(!f)return;const img=new Image();img.src=URL.createObjectURL(f);await img.decode();stillImage=img;if(sourceMode!=="camera"){sourceMode="image";els.stillView.src=img.src;els.stillView.style.display="block";els.video.style.display="none";setStageSize(img.naturalWidth,img.naturalHeight)}status(`Backup image loaded: ${f.name}`)};
