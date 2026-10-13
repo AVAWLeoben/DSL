@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Pre-rendered interactive 3D viewer for the PP.mat hyperspectral cube used by the ShowMatCube3D MATLAB exercise.">
+<title>ShowMatCube3D · Browser Viewer</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#090e16;--panel:#121b29;--panel2:#172337;--line:#2a3c50;
+  --text:#eaf2fb;--muted:#a4b5c7;--blue:#5bd5f8;--mint:#6ae0bc;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(ellipse at 78% -10%,#16324b 0%,transparent 44%),var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+a{color:inherit;text-decoration:none}
+.shell{width:min(1180px,calc(100% - 32px));margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 0;border-bottom:1px solid #ffffff15}
+.brand{font-weight:800;letter-spacing:.02em}.brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:600}
+.back{color:var(--muted);font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:9px}.back:hover{color:var(--text);border-color:#4a6d87}
+.hero{padding:48px 0 24px}.eyebrow{color:var(--mint);font-size:12px;font-weight:750;letter-spacing:.15em;text-transform:uppercase}.hero h1{font-size:clamp(34px,5.5vw,62px);line-height:1.02;letter-spacing:-.045em;margin:12px 0 14px}.hero p{max-width:800px;color:var(--muted);font-size:16px;margin:0}
+.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:18px;padding:18px 0 56px}
+.panel{background:linear-gradient(155deg,#17263a,#111a28);border:1px solid var(--line);border-radius:17px;padding:16px}
+.viewer{position:relative;min-height:520px;border-radius:13px;overflow:hidden;background:radial-gradient(circle at 50% 45%,#101c2a 0,#070b11 67%);border:1px solid #243648;touch-action:none;user-select:none}
+#cubeCanvas{display:block;width:100%;height:100%;min-height:520px;cursor:grab}.viewer.dragging #cubeCanvas{cursor:grabbing}
+.hud{position:absolute;left:14px;top:14px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}.pill{background:#08111bcc;border:1px solid #355069;border-radius:999px;padding:5px 9px;font-size:11px;color:#d9e9f6;backdrop-filter:blur(7px)}
+.help{position:absolute;left:14px;right:14px;bottom:13px;text-align:center;color:#b6c5d4;font-size:12px;pointer-events:none;text-shadow:0 1px 2px #000}
+.loading{position:absolute;inset:0;display:none;place-items:center;background:#07101bd1;z-index:5}.loading.show{display:grid}.loadingCard{padding:14px 17px;border:1px solid #355069;border-radius:12px;background:#101b29;text-align:center;color:#dceaf6}.spinner{width:34px;height:34px;border-radius:50%;border:4px solid #ffffff22;border-top-color:var(--blue);margin:0 auto 9px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}button{font:inherit;color:var(--text);background:#172337;border:1px solid var(--line);border-radius:9px;padding:9px 11px;cursor:pointer}button:hover{border-color:#4e7b98;background:#1d2d43}button.primary{background:#174b64;border-color:#3faccd}.toolbar .spacer{flex:1}
+.side{display:grid;gap:14px;align-content:start}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}.card h2{font-size:14px;margin:0 0 10px}.small{font-size:12px;color:var(--muted);line-height:1.55}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px}.stat span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.stat b{display:block;margin-top:3px;font-size:16px}.code{font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;background:#09111a;border:1px solid #243648;border-radius:9px;padding:10px;overflow:auto;color:#d9e9f6}.status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 14px #6ae0bc77}.rangeRow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:9px}.rangeRow input{width:100%}.readout{font-size:12px;color:#d9e9f6;min-width:48px;text-align:right}
+footer{border-top:1px solid #ffffff15;padding:22px 0 38px;color:var(--muted);font-size:12px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.viewer,#cubeCanvas{min-height:460px}}
+@media(max-width:560px){.shell{width:min(100% - 20px,1180px)}header{align-items:flex-start}.hero{padding-top:34px}.viewer,#cubeCanvas{min-height:390px}.toolbar button{flex:1}.toolbar .spacer{display:none}.stats{grid-template-columns:1fr 1fr}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <a class="brand" href="index.html">EXERCISE REPOSITORY<small>Interactive learning environment</small></a>
+  <a class="back" href="index.html">← Back to exercises</a>
+</header>
+<main>
+  <section class="hero">
+    <div class="eyebrow">Hyperspectral imaging · volume visualization</div>
+    <h1>ShowMatCube3D</h1>
+    <p>Explore the normalized <b>PP.mat</b> data cube without MATLAB. The heavy volume rendering was pre-computed into compact turntable atlases, so the browser only displays prepared frames while you rotate and tilt the cube.</p>
+  </section>
+
+  <section class="layout">
+    <div>
+      <div id="viewer" class="panel viewer" tabindex="0" aria-label="Interactive pre-rendered 3D hyperspectral cube. Drag horizontally to rotate and vertically to tilt.">
+        <canvas id="cubeCanvas"></canvas>
+        <div class="hud">
+          <span id="anglePill" class="pill">Azimuth 030°</span>
+          <span id="elevPill" class="pill">Elevation 0°</span>
+          <span class="pill">Pre-rendered MIP</span>
+        </div>
+        <div id="loading" class="loading show"><div class="loadingCard"><div class="spinner"></div><div>Loading pre-rendered cube…</div></div></div>
+        <div class="help">Drag to rotate · drag up/down to tilt · mouse wheel to zoom · arrow keys also work</div>
+      </div>
+      <div class="toolbar" aria-label="Viewer controls">
+        <button id="leftBtn" type="button" aria-label="Rotate left">↶ Rotate</button>
+        <button id="rightBtn" type="button" aria-label="Rotate right">Rotate ↷</button>
+        <button id="tiltDownBtn" type="button">Tilt −</button>
+        <button id="tiltUpBtn" type="button">Tilt +</button>
+        <span class="spacer"></span>
+        <button id="autoBtn" class="primary" type="button">Auto rotate</button>
+        <button id="resetBtn" type="button">Reset</button>
+        <button id="fullBtn" type="button">Fullscreen</button>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <h2>Source volume</h2>
+        <div class="stats">
+          <div class="stat"><span>Array size</span><b>312 × 220 × 42</b></div>
+          <div class="stat"><span>Source max</span><b>3099</b></div>
+          <div class="stat"><span>Azimuth views</span><b>36</b></div>
+          <div class="stat"><span>Tilt levels</span><b>3</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>MATLAB operation reproduced</h2>
+        <div class="code">cube = imnData / max(imnData,[],'all');<br>v = volshow(cube);</div>
+        <p class="small">The source volume is normalized exactly as in the MATLAB exercise. For the web version, each prepared view uses a maximum-intensity projection after rotating the normalized volume.</p>
+      </div>
+
+      <div class="card">
+        <h2>Display controls</h2>
+        <div class="rangeRow"><input id="zoom" type="range" min="70" max="200" value="100" step="5" aria-label="Viewer zoom"><span id="zoomOut" class="readout">100%</span></div>
+        <p class="small">Rotation is sampled every 10°. Vertical movement switches between −20°, 0° and +20° elevation.</p>
+      </div>
+
+      <div class="card">
+        <h2>Why pre-render?</h2>
+        <p class="small">The original <code>volshow</code> volume can be demanding on classroom hardware. This page transfers the expensive 3D rotation/projection step to an instructor-side preprocessing step. Students receive only three compressed image atlases and need no MATLAB installation, MAT-file parser or WebGL volume renderer.</p>
+        <div class="status"><span class="dot"></span><span>No computation-heavy volume rendering in the browser</span></div>
+      </div>
+    </aside>
+  </section>
+</main>
+<footer>ShowMatCube3D browser exercise · AVAW · Pre-rendered from PP.mat</footer>
+</div>
+<script>
+(()=>{
+'use strict';
+const FRAME=420, COLS=6, COUNT=36;
+const elevations=[-20,0,20];
+const paths={
+  '-20':'assets/showmatcube3d/pp_cube_elev_m20.webp',
+  '0':'assets/showmatcube3d/pp_cube_elev_0.webp',
+  '20':'assets/showmatcube3d/pp_cube_elev_p20.webp'
+};
+const canvas=document.getElementById('cubeCanvas');
+const ctx=canvas.getContext('2d');
+const viewer=document.getElementById('viewer');
+const loading=document.getElementById('loading');
+const anglePill=document.getElementById('anglePill');
+const elevPill=document.getElementById('elevPill');
+const zoomInput=document.getElementById('zoom');
+const zoomOut=document.getElementById('zoomOut');
+const images=new Map();
+const loadingPromises=new Map();
+let angleIndex=3;
+let elevIndex=1;
+let zoom=1;
+let autoTimer=null;
+let dragging=false,startX=0,startY=0,startAngle=0,startElev=1;
+let cssW=0,cssH=0;
+
+function mod(n,m){return ((n%m)+m)%m}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function currentElevation(){return elevations[elevIndex]}
+function imageForElevation(e){return images.get(String(e))}
+
+function loadElevation(e){
+  const key=String(e);
+  if(images.has(key)) return Promise.resolve(images.get(key));
+  if(loadingPromises.has(key)) return loadingPromises.get(key);
+  const p=new Promise((resolve,reject)=>{
+    const im=new Image();
+    im.decoding='async';
+    im.onload=()=>{images.set(key,im);loadingPromises.delete(key);resolve(im)};
+    im.onerror=()=>{loadingPromises.delete(key);reject(new Error('Could not load '+paths[key]))};
+    im.src=paths[key];
+  });
+  loadingPromises.set(key,p);return p;
+}
+
+function resize(){
+  const r=viewer.getBoundingClientRect();
+  cssW=Math.max(280,r.width);
+  cssH=Math.max(340,r.height);
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
+  canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+
+async function ensureCurrent(){
+  const e=currentElevation();
+  if(imageForElevation(e)){loading.classList.remove('show');draw();return}
+  loading.classList.add('show');
+  try{await loadElevation(e);loading.classList.remove('show');draw()}
+  catch(err){loading.innerHTML='<div class="loadingCard">'+String(err.message||err)+'</div>'}
+}
+
+function draw(){
+  if(!cssW||!cssH)return;
+  ctx.clearRect(0,0,cssW,cssH);
+  const e=currentElevation(),im=imageForElevation(e);
+  anglePill.textContent='Azimuth '+String(angleIndex*10).padStart(3,'0')+'°';
+  elevPill.textContent='Elevation '+(e>0?'+':'')+e+'°';
+  if(!im)return;
+  const sx=(angleIndex%COLS)*FRAME,sy=Math.floor(angleIndex/COLS)*FRAME;
+  const size=Math.min(cssW,cssH)*0.90*zoom;
+  const x=(cssW-size)/2,y=(cssH-size)/2;
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(im,sx,sy,FRAME,FRAME,x,y,size,size);
+}
+
+function setAngle(i){angleIndex=mod(i,COUNT);draw()}
+function setElevation(i){
+  const ni=clamp(i,0,elevations.length-1);
+  if(ni===elevIndex)return;
+  elevIndex=ni;ensureCurrent();
+}
+function setZoom(v){zoom=clamp(v,.7,2);zoomInput.value=String(Math.round(zoom*100));zoomOut.textContent=Math.round(zoom*100)+'%';draw()}
+function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('autoBtn').textContent='Auto rotate'}}
+function toggleAuto(){
+  if(autoTimer){stopAuto();return}
+  document.getElementById('autoBtn').textContent='Stop rotation';
+  autoTimer=setInterval(()=>setAngle(angleIndex+1),120);
+}
+function reset(){stopAuto();angleIndex=3;elevIndex=1;setZoom(1);ensureCurrent()}
+
+viewer.addEventListener('pointerdown',e=>{
+  stopAuto();dragging=true;viewer.classList.add('dragging');viewer.setPointerCapture(e.pointerId);
+  startX=e.clientX;startY=e.clientY;startAngle=angleIndex;startElev=elevIndex;
+});
+viewer.addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  setAngle(startAngle+Math.round((e.clientX-startX)/10));
+  const ni=clamp(startElev-Math.round((e.clientY-startY)/80),0,2);
+  if(ni!==elevIndex){elevIndex=ni;ensureCurrent()}
+});
+viewer.addEventListener('pointerup',e=>{dragging=false;viewer.classList.remove('dragging');try{viewer.releasePointerCapture(e.pointerId)}catch{}});
+viewer.addEventListener('pointercancel',()=>{dragging=false;viewer.classList.remove('dragging')});
+viewer.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom+(e.deltaY<0?.08:-.08))},{passive:false});
+viewer.addEventListener('dblclick',reset);
+viewer.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'){e.preventDefault();stopAuto();setAngle(angleIndex-1)}
+  else if(e.key==='ArrowRight'){e.preventDefault();stopAuto();setAngle(angleIndex+1)}
+  else if(e.key==='ArrowUp'){e.preventDefault();stopAuto();setElevation(elevIndex+1)}
+  else if(e.key==='ArrowDown'){e.preventDefault();stopAuto();setElevation(elevIndex-1)}
+  else if(e.key==='Home'){e.preventDefault();reset()}
+});
+document.getElementById('leftBtn').onclick=()=>{stopAuto();setAngle(angleIndex-1)};
+document.getElementById('rightBtn').onclick=()=>{stopAuto();setAngle(angleIndex+1)};
+document.getElementById('tiltDownBtn').onclick=()=>{stopAuto();setElevation(elevIndex-1)};
+document.getElementById('tiltUpBtn').onclick=()=>{stopAuto();setElevation(elevIndex+1)};
+document.getElementById('autoBtn').onclick=toggleAuto;
+document.getElementById('resetBtn').onclick=reset;
+document.getElementById('fullBtn').onclick=()=>viewer.requestFullscreen?.();
+zoomInput.addEventListener('input',()=>setZoom(Number(zoomInput.value)/100));
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAuto()});
+
+new ResizeObserver(resize).observe(viewer);
+loadElevation(0).then(()=>{loading.classList.remove('show');resize();setTimeout(()=>{loadElevation(-20);loadElevation(20)},250)}).catch(err=>{loading.innerHTML='<div class="loadingCard">'+String(err.message||err)+'</div>'});
+})();
+</script>
+</body>
+</html>

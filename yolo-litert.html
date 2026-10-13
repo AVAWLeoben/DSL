@@ -17,7 +17,7 @@
 .spinner{width:58px;height:58px;border:6px solid rgba(255,255,255,.18);border-top-color:#38bdf8;border-right-color:#38bdf8;border-radius:50%;margin:0 auto 14px;animation:spin .85s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 .loadingTitle{font-size:20px;font-weight:800}.loadingText{font-size:13px;color:#cbd5e1;margin-top:6px;white-space:pre-line;line-height:1.45}
 .buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}button,select,input[type=file]{background:#2a303a;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:8px}
-button{cursor:pointer}button:hover{filter:brightness(1.12)}button.primary{background:#075985;border-color:#0ea5e9}.buttons button[hidden]{display:none}
+button{cursor:pointer}button:hover{filter:brightness(1.12)}button.primary{background:#075985;border-color:#0ea5e9}
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:9px}.control{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:9px}.control label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
 input[type=range],select,input[type=file]{width:100%}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px}
 .stat .k{font-size:11px;color:var(--muted)}.stat .v{font-size:17px;font-weight:700;margin-top:2px;word-break:break-word}
@@ -47,9 +47,9 @@ input[type=range],select,input[type=file]{width:100%}.stats{display:grid;grid-te
 <div id="loadingOverlay" class="loadingOverlay"><div class="loadingCard"><div class="spinner"></div><div id="loadingTitle" class="loadingTitle">Loading LiteRT model…</div><div id="loadingText" class="loadingText">Preparing WebGPU</div></div></div>
 </div>
 <div class="buttons">
-<button id="cameraBtn" class="primary">Start webcam</button><button id="switchCameraBtn" hidden>Switch to front camera</button><button id="stopBtn">Stop webcam</button><button id="pauseBtn">Pause inference</button><button id="clearBtn">Clear boxes</button>
+<button id="cameraBtn" class="primary">Start webcam</button><button id="stopBtn">Stop webcam</button><button id="pauseBtn">Pause inference</button><button id="clearBtn">Clear boxes</button>
 </div>
-<div class="note">Keyboard: <kbd>o</kbd>/<kbd>p</kbd> previous/next model, <kbd>+</kbd>/<kbd>-</kbd> image size, <kbd>c</kbd>/<kbd>v</kbd> confidence, <kbd>Esc</kbd> pause inference, <kbd>f</kbd> switch camera.</div>
+<div class="note">Keyboard: <kbd>o</kbd>/<kbd>p</kbd> previous/next model, <kbd>+</kbd>/<kbd>-</kbd> image size, <kbd>c</kbd>/<kbd>v</kbd> confidence, <kbd>Esc</kbd> pause inference.</div>
 </section>
 
 <aside class="panel">
@@ -89,13 +89,12 @@ input[type=range],select,input[type=file]{width:100%}.stats{display:grid;grid-te
 let YOLO=null,runtimeError=null;
 const $=id=>document.getElementById(id);
 const els={stage:$("stage"),video:$("video"),stillView:$("stillView"),overlay:$("overlay"),loadingOverlay:$("loadingOverlay"),loadingTitle:$("loadingTitle"),loadingText:$("loadingText"),
-cameraBtn:$("cameraBtn"),switchCameraBtn:$("switchCameraBtn"),stopBtn:$("stopBtn"),pauseBtn:$("pauseBtn"),clearBtn:$("clearBtn"),imageFile:$("imageFile"),modelSelect:$("modelSelect"),imgSize:$("imgSize"),
+cameraBtn:$("cameraBtn"),stopBtn:$("stopBtn"),pauseBtn:$("pauseBtn"),clearBtn:$("clearBtn"),imageFile:$("imageFile"),modelSelect:$("modelSelect"),imgSize:$("imgSize"),
 conf:$("conf"),confVal:$("confVal"),iou:$("iou"),iouVal:$("iouVal"),modelStat:$("modelStat"),deviceStat:$("deviceStat"),loadStat:$("loadStat"),preStat:$("preStat"),inferStat:$("inferStat"),
 postStat:$("postStat"),wallStat:$("wallStat"),detStat:$("detStat"),cacheStat:$("cacheStat"),gpuStat:$("gpuStat"),status:$("status")};
 
 const ctx=els.overlay.getContext("2d");
 let stream=null,stillImage=null,sourceMode="none",running=true,busy=false;
-let cameraFacing="environment",cameraInputs=[],cameraRequest=0,cameraStarting=false,cameraSwitching=false,sourceEpoch=0;
 let catalog=new Map(),modelCache=new Map();
 // Put these files in a models/ folder next to index.html.
 // Edit this list if you add/remove model files.
@@ -135,95 +134,14 @@ function drawBoxes(results){
 async function loadRuntime(){try{const mod=await import("@ultralytics/yolo");YOLO=mod.YOLO;status("YOLO LiteRT browser runtime ready. Loading the default classroom model…");rebuildCatalog();refreshFamilySelect();refreshSizeSelect(160);await loadSelectedModel()}catch(e){runtimeError=e;status(`YOLO runtime error:\n${e?.stack||e}`)}}
 loadRuntime();els.gpuStat.textContent=navigator.gpu?"Available":"Unavailable";
 
-// facingMode "environment" = rear camera, "user" = selfie camera.
-// enumerateDevices() is most useful after the user has granted camera permission.
-const mobileCameraBrowser=()=>navigator.userAgentData?.mobile===true||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
- (navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
-function updateCameraButton(){
- const facingSupported=!!navigator.mediaDevices?.getSupportedConstraints?.().facingMode;
- // Some mobile browsers expose only one videoinput even when both cameras exist.
- const canSwitch=cameraInputs.length>1||(mobileCameraBrowser()&&facingSupported);
- els.switchCameraBtn.hidden=(!stream&&!cameraSwitching)||!canSwitch;
- els.switchCameraBtn.disabled=cameraStarting;
- els.switchCameraBtn.textContent=`Switch to ${cameraFacing==="user"?"rear":"front"} camera`;
-}
-async function refreshCameraInputs(request){
- try{
-  const devices=await navigator.mediaDevices.enumerateDevices();
-  if(request===cameraRequest)cameraInputs=devices.filter(d=>d.kind==="videoinput");
- }catch(e){console.warn("Could not enumerate cameras:",e)}
- if(request===cameraRequest)updateCameraButton();
-}
-function releaseCamera(){
- sourceEpoch++; // Discard object-detection results from the previous video stream.
- if(stream)for(const track of stream.getTracks())track.stop();
- stream=null;els.video.pause();els.video.srcObject=null;
- if(sourceMode==="camera")sourceMode=stillImage?"image":"none";
- if(sourceMode==="image"&&stillImage){els.stillView.src=stillImage.src;els.stillView.style.display="block";els.video.style.display="none";setStageSize(stillImage.naturalWidth,stillImage.naturalHeight)}
- clearBoxes();
-}
-function stopCamera(){cameraRequest++;cameraStarting=false;cameraSwitching=false;releaseCamera();updateCameraButton()}
-function cameraOptions(facing,exact=false){
- return {audio:false,video:{width:{ideal:1280},height:{ideal:720},facingMode:exact?{exact:facing}:{ideal:facing}}};
-}
-async function openCamera(facing,switching,previousDeviceId){
- try{return await navigator.mediaDevices.getUserMedia(cameraOptions(facing,switching))}
- catch(e){
-  // Fallback for browsers with multiple cameras but no usable facingMode support.
-  if(!switching||!["OverconstrainedError","NotFoundError","TypeError"].includes(e.name))throw e;
-  const labelMatches=facing==="environment"?/back|rear|environment/i:/front|user|face/i;
-  const alternatives=cameraInputs.filter(d=>d.deviceId&&d.deviceId!==previousDeviceId);
-  const alternative=alternatives.find(d=>labelMatches.test(d.label))||alternatives[0];
-  if(!alternative)throw e;
-  return navigator.mediaDevices.getUserMedia({audio:false,video:{width:{ideal:1280},height:{ideal:720},deviceId:{exact:alternative.deviceId}}});
- }
-}
-async function attachCamera(newStream,facing,request){
- if(request!==cameraRequest){newStream.getTracks().forEach(t=>t.stop());return false}
- stream=newStream;els.video.srcObject=stream;
- await new Promise(resolve=>{if(els.video.readyState>=1&&els.video.videoWidth)resolve();else els.video.onloadedmetadata=resolve});
- if(request!==cameraRequest)return false;
- await els.video.play();
- if(request!==cameraRequest)return false;
- const actualFacing=stream.getVideoTracks()[0]?.getSettings?.().facingMode;
- cameraFacing=["user","environment"].includes(actualFacing)?actualFacing:facing;
- sourceMode="camera";els.video.style.display="block";els.stillView.style.display="none";
- setStageSize(els.video.videoWidth,els.video.videoHeight);
- return true;
-}
-async function startCamera(facing=cameraFacing,switching=false){
- if(cameraStarting)return;
- cameraStarting=true;cameraSwitching=switching;
- const request=++cameraRequest;
- const previousFacing=cameraFacing;
- const previousDeviceId=stream?.getVideoTracks()[0]?.getSettings?.().deviceId;
- releaseCamera();updateCameraButton();
- try{
-  if(!navigator.mediaDevices?.getUserMedia)throw new Error("getUserMedia unavailable. Use HTTPS or localhost.");
-  status(switching?`Switching to ${facing==="user"?"front":"rear"} camera…`:"Requesting webcam permission…");
-  const newStream=await openCamera(facing,switching,previousDeviceId);
-  if(!await attachCamera(newStream,facing,request))return;
-  status(`${cameraFacing==="user"?"Front":"Rear"} camera connected: ${els.video.videoWidth}×${els.video.videoHeight}`);
-  await refreshCameraInputs(request);
- }catch(e){
-  if(request!==cameraRequest)return;
-  releaseCamera();cameraFacing=previousFacing;
-  if(switching){
-   // When switching fails, restore the previous camera so the demonstration continues.
-   try{
-    const restored=await navigator.mediaDevices.getUserMedia(cameraOptions(previousFacing));
-    if(!await attachCamera(restored,previousFacing,request))return;
-    status(`Could not switch cameras (${e?.message||e}). Previous camera restored.`);
-    await refreshCameraInputs(request);
-   }catch(restoreError){if(request===cameraRequest)status(`Camera switch failed: ${e?.message||e}\nRestore failed: ${restoreError?.message||restoreError}`)}
-  }else status(`Camera error:\n${e?.stack||e}`);
- }finally{if(request===cameraRequest){cameraStarting=false;cameraSwitching=false;updateCameraButton()}}
-}
-async function switchCamera(){if(stream&&!cameraStarting)await startCamera(cameraFacing==="user"?"environment":"user",true)}
-els.cameraBtn.onclick=()=>startCamera();els.switchCameraBtn.onclick=switchCamera;
-els.stopBtn.onclick=()=>{stopCamera();status("Webcam stopped.")};els.pauseBtn.onclick=()=>{running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference";status(running?"Inference resumed.":"Inference paused. Webcam remains live.")};els.clearBtn.onclick=clearBoxes;
+async function startCamera(){try{status("Requesting webcam permission…");if(!navigator.mediaDevices?.getUserMedia)throw new Error("getUserMedia unavailable. Use HTTPS or localhost.");if(stream)stopCamera();
+ stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});els.video.srcObject=stream;
+ await new Promise(r=>{if(els.video.readyState>=1&&els.video.videoWidth)r();else els.video.onloadedmetadata=r});await els.video.play();sourceMode="camera";els.video.style.display="block";els.stillView.style.display="none";
+ setStageSize(els.video.videoWidth,els.video.videoHeight);status(`Webcam connected: ${els.video.videoWidth}×${els.video.videoHeight}`)}catch(e){status(`Camera error:\n${e?.stack||e}`)}}
+function stopCamera(){if(stream)for(const t of stream.getTracks())t.stop();stream=null;els.video.srcObject=null;if(sourceMode==="camera")sourceMode=stillImage?"image":"none"}
+els.cameraBtn.onclick=startCamera;els.stopBtn.onclick=()=>{stopCamera();status("Webcam stopped.")};els.pauseBtn.onclick=()=>{running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference";status(running?"Inference resumed.":"Inference paused. Webcam remains live.")};els.clearBtn.onclick=clearBoxes;
 
-els.imageFile.onchange=async()=>{const f=els.imageFile.files?.[0];if(!f)return;const img=new Image();img.src=URL.createObjectURL(f);await img.decode();stillImage=img;sourceEpoch++;if(sourceMode!=="camera"){sourceMode="image";els.stillView.src=img.src;els.stillView.style.display="block";els.video.style.display="none";setStageSize(img.naturalWidth,img.naturalHeight)}status(`Backup image loaded: ${f.name}`)};
+els.imageFile.onchange=async()=>{const f=els.imageFile.files?.[0];if(!f)return;const img=new Image();img.src=URL.createObjectURL(f);await img.decode();stillImage=img;if(sourceMode!=="camera"){sourceMode="image";els.stillView.src=img.src;els.stillView.style.display="block";els.video.style.display="none";setStageSize(img.naturalWidth,img.naturalHeight)}status(`Backup image loaded: ${f.name}`)};
 function currentSource(){if(sourceMode==="camera"&&stream&&els.video.readyState>=2)return els.video;if(stillImage)return stillImage;return null}
 
 function rebuildCatalog(){catalog.clear();for(const fn of MODEL_FILES){const {family,size}=parseFile(fn);if(!catalog.has(family))catalog.set(family,new Map());catalog.get(family).set(size,fn)}}
@@ -257,9 +175,8 @@ async function loadSelectedModel(){
 els.conf.oninput=()=>els.confVal.textContent=(+els.conf.value).toFixed(2);els.iou.oninput=()=>els.iouVal.textContent=(+els.iou.value).toFixed(2);
 
 async function inferFrame(){
- if(busy||!running||!currentModel)return;const src=currentSource();if(!src)return;const epoch=sourceEpoch;busy=true;
+ if(busy||!running||!currentModel)return;const src=currentSource();if(!src)return;busy=true;
  try{const t0=performance.now();const results=await currentModel.predict(src,{conf:+els.conf.value,iou:+els.iou.value});const wall=performance.now()-t0;
-  if(epoch!==sourceEpoch)return; // A camera switch or stop occurred during inference.
  const rw=+results?.width||(src.videoWidth||src.naturalWidth||src.width),rh=+results?.height||(src.videoHeight||src.naturalHeight||src.height);if(rw&&rh)setStageSize(rw,rh);drawBoxes(results);
  const sp=results?.speed||{};els.preStat.textContent=fmt(+sp.preprocess);els.inferStat.textContent=fmt(+sp.inference);els.postStat.textContent=fmt(+sp.postprocess);els.wallStat.textContent=fmt(wall);els.detStat.textContent=String(results?.boxes?.length||0);els.deviceStat.textContent=currentModel.device||"unknown";
  status(`${currentFilename} · ${results?.boxes?.length||0} detections\npre ${fmt(+sp.preprocess)} · infer ${fmt(+sp.inference)} · post ${fmt(+sp.postprocess)} · wall ${fmt(wall)}`)
@@ -270,7 +187,7 @@ async function loop(){await inferFrame();requestAnimationFrame(loop)}requestAnim
 function cycleFamily(dir){const arr=[...catalog.keys()].sort();if(!arr.length)return;let i=Math.max(0,arr.indexOf(currentFamily));i=(i+dir+arr.length)%arr.length;currentFamily=arr[i];els.modelSelect.value=currentFamily;refreshSizeSelect(currentSize||160);loadSelectedModel()}
 function cycleSize(dir){const opts=[...els.imgSize.options];if(!opts.length)return;let i=els.imgSize.selectedIndex;i=Math.max(0,Math.min(opts.length-1,i+dir));els.imgSize.selectedIndex=i;currentSize=els.imgSize.value?+els.imgSize.value:null;loadSelectedModel()}
 function adjustConf(d){els.conf.value=Math.max(.05,Math.min(.95,+els.conf.value+d)).toFixed(2);els.conf.dispatchEvent(new Event("input"))}
-window.addEventListener("keydown",e=>{if(e.key==="Escape"){running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference"}else if(e.key==="p")cycleFamily(+1);else if(e.key==="o")cycleFamily(-1);else if(e.key==="+"||e.key==="=")cycleSize(+1);else if(e.key==="-")cycleSize(-1);else if(e.key==="c")adjustConf(-.05);else if(e.key==="v")adjustConf(+.05);else if(e.key==="f")switchCamera()});
+window.addEventListener("keydown",e=>{if(e.key==="Escape"){running=!running;els.pauseBtn.textContent=running?"Pause inference":"Resume inference"}else if(e.key==="p")cycleFamily(+1);else if(e.key==="o")cycleFamily(-1);else if(e.key==="+"||e.key==="=")cycleSize(+1);else if(e.key==="-")cycleSize(-1);else if(e.key==="c")adjustConf(-.05);else if(e.key==="v")adjustConf(+.05)});
 window.addEventListener("error",e=>status(`JavaScript error:\n${e.message||e.error||e}`));window.addEventListener("unhandledrejection",e=>status(`JavaScript promise error:\n${e.reason?.stack||e.reason||e}`));
 </script>
 </body>
