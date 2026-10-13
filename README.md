@@ -156,6 +156,8 @@ For the NIR example, the selected preprocessing is applied directly to the upper
 
 For the NIR example, the independent variable is spectral band index. The FFT therefore uses units of cycles per band rather than hertz. The page offers raw, mean-centered, and first-derivative preprocessing so students can see that broad spectral trends occupy low Fourier components while rapid band-to-band changes and noise occupy higher components. The page explicitly notes that these Fourier-domain peaks are not chemical absorption wavelengths.
 
+In dB display mode, the spectrum is shown as a relative magnitude spectrum with the strongest current FFT bin defined as 0 dB and a fixed visible range of -100 to 0 dB. Values below -100 dB are clipped to the plot floor so the trace remains inside the axes.
+
 The FFT remains fully browser-side using the embedded radix-2 Cooley–Tukey implementation. Non-power-of-two inputs such as the 220-band NIR spectrum are zero-padded to the next power of two before transformation.
 
 ## FFT audio visualizer

@@ -444,20 +444,27 @@ function drawSpectrum(){
   const xmax=spec.nyquist;
   let vals=Array.from(spec.mags);
   let ymin=0,ymax=Math.max(...vals,1e-9),yLabel="Amplitude",yFmt=v=>v.toFixed(2);
+  let dbReference=1;
   if(state.scale==="db"){
-    vals=vals.map(v=>20*Math.log10(Math.max(v,1e-8)));
-    ymin=Math.max(-100,Math.min(...vals));ymax=Math.max(0,Math.max(...vals)+3);yLabel="Magnitude (dB)";yFmt=v=>v.toFixed(0);
+    // Plot a relative dB spectrum. The strongest bin is 0 dB and the visible
+    // teaching range is fixed at -100..0 dB. Clamp values before mapping them
+    // to canvas coordinates so leakage/noise cannot draw outside the axes.
+    dbReference=Math.max(...vals,1e-12);
+    vals=vals.map(v=>clamp(20*Math.log10(Math.max(v,1e-12)/dbReference),-100,0));
+    ymin=-100;ymax=0;yLabel="Relative magnitude (dB)";yFmt=v=>v.toFixed(0);
   }else ymax*=1.12;
 
   const xLabel=state.mode==="nir"?"Spectral modulation frequency (cycles / band)":"Frequency (Hz)";
   const xFmt=state.mode==="nir"?v=>v.toFixed(2):v=>String(Math.round(v));
   const g=axes(ctx,w,h,0,xmax,ymin,ymax,xLabel,yLabel,"Single-sided FFT spectrum",xFmt,yFmt);
+  ctx.save();
+  ctx.beginPath();ctx.rect(g.m.l,g.m.t,g.pw,g.ph);ctx.clip();
   ctx.strokeStyle="#f59e0b";ctx.lineWidth=1.8;ctx.beginPath();
   for(let k=0;k<vals.length;k++){const x=g.x(k*spec.df),y=g.y(vals[k]);k?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();
 
   ctx.fillStyle="#ef4444";
   for(const p of peaks.slice(0,6)){
-    const pv=state.scale==="db"?20*Math.log10(Math.max(p.a,1e-8)):p.a;
+    const pv=state.scale==="db"?clamp(20*Math.log10(Math.max(p.a,1e-12)/dbReference),-100,0):p.a;
     const x=g.x(p.x),y=g.y(pv);ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.fill();
   }
 
@@ -466,7 +473,8 @@ function drawSpectrum(){
     ctx.strokeStyle="#0ea5e9";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,g.m.t);ctx.lineTo(x,g.m.t+g.ph);ctx.stroke();
     ctx.fillStyle="#0ea5e9";ctx.beginPath();ctx.arc(x,g.y(vals[k]),5,0,Math.PI*2);ctx.fill();
   }
-  lastSpectrumGeom={...g,w,h,df:spec.df,count:vals.length};
+  ctx.restore();
+  lastSpectrumGeom={...g,w,h,df:spec.df,count:vals.length,dbReference};
 }
 
 function updateAnalysis(){
@@ -508,9 +516,12 @@ function updatePeakTable(){
 function updateBinReadout(){
   if(!current||state.selectedBin==null){el("binReadout").textContent="Run the FFT, then click the spectrum to inspect a bin.";return}
   const k=state.selectedBin,p=current.spec.mags[k],x=k*current.spec.df;
+  const ref=Math.max(...current.spec.mags,1e-12);
+  const db=clamp(20*Math.log10(Math.max(p,1e-12)/ref),-100,0);
+  const magText=state.scale==="db"?`${db.toFixed(1)} dB relative to peak`:`${p.toFixed(4)}`;
   el("binReadout").innerHTML=state.mode==="nir"
-    ?`<b>Bin ${k}</b><br>Spectral modulation: ${x.toFixed(4)} cycles/band<br>Magnitude: ${p.toFixed(4)}`
-    :`<b>Bin ${k}</b><br>Frequency: ${x.toFixed(2)} Hz<br>Magnitude: ${p.toFixed(4)}`;
+    ?`<b>Bin ${k}</b><br>Spectral modulation: ${x.toFixed(4)} cycles/band<br>Magnitude: ${magText}`
+    :`<b>Bin ${k}</b><br>Frequency: ${x.toFixed(2)} Hz<br>Magnitude: ${magText}`;
 }
 
 function rangeControl(label,key,min,max,step,value,unit,obj){
@@ -602,7 +613,7 @@ el("signalPicker").addEventListener("click",e=>{
 el("sampleCount").onchange=e=>{state.n=Number(e.target.value);scheduleUpdate()};
 el("windowSelect").onchange=e=>{state.window=e.target.value;scheduleUpdate()};
 el("noiseSlider").oninput=e=>{state.noise=Number(e.target.value);el("noiseOut").textContent=`${state.noise}%`;scheduleUpdate()};
-el("scaleSelect").onchange=e=>{state.scale=e.target.value;drawSpectrum()};
+el("scaleSelect").onchange=e=>{state.scale=e.target.value;drawSpectrum();updateBinReadout()};
 el("removeMean").onchange=e=>{state.removeMean=e.target.checked;scheduleUpdate()};
 el("nirPrep").onchange=e=>{state.nirPrep=e.target.value;scheduleUpdate()};
 el("newNoiseBtn").onclick=()=>{state.noiseSeed++;scheduleUpdate()};
