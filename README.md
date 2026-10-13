@@ -1,6 +1,6 @@
 # Exercise Repository — interactive student portal
 
-A GitHub Pages-ready landing page with eleven browser-based teaching exercises. Students can open the demos directly in a modern browser; no MATLAB installation is required for the converted exercises.
+A GitHub Pages-ready landing page with twelve browser-based teaching exercises. Students can open the demos directly in a modern browser; no MATLAB installation is required for the converted exercises.
 
 ## Deploy
 
@@ -15,6 +15,7 @@ A GitHub Pages-ready landing page with eleven browser-based teaching exercises. 
 | --- | --- |
 | Sampling rate | `sampling-rate.html` |
 | Nyquist theorem & aliasing | `nyquist-aliasing.html` |
+| Fourier transform & FFT | `fourier-spectrum.html` |
 | Sampling depth | `sampling-depth.html` |
 | NIR sampling depth | `nir-sampling-depth.html` |
 | NIR sampling resolution | `nir-sampling-resolution.html` |
@@ -132,3 +133,20 @@ The ShowMatCube3D page preserves CSS 3D on the 220-slab parent (no filter/opacit
 - frequency-domain fold-back into the representable baseband.
 
 The CD preset uses 44.1 kHz sampling with a 20 kHz tone; an aliasing preset uses a 30 kHz tone at the same sampling rate, which appears at 14.1 kHz in the sampled data. The page also notes that practical acquisition systems use an anti-alias low-pass filter before the ADC.
+
+
+## Fourier transform & FFT
+
+`fourier-spectrum.html` is a self-contained introductory spectral-analysis exercise. It uses a fixed one-second signal sampled at 4096 Hz with 4096 samples. The waveform contains three hidden sinusoidal components.
+
+Students first inspect the composite waveform in the time domain, then run a browser-side radix-2 Cooley–Tukey FFT. The page displays the positive-frequency single-sided amplitude spectrum, detects the three strongest peaks, and lets students reveal the source frequencies and amplitudes for comparison.
+
+The fixed signal is deliberately aligned to 1 Hz FFT bins so the introductory spectrum is clean:
+
+- 120 Hz, amplitude 1.00
+- 440 Hz, amplitude 0.55
+- 880 Hz, amplitude 0.30
+
+The exercise also shows `Δf = f_s / N = 1 Hz` and the 2048 Hz Nyquist frequency, linking directly to the preceding sampling-rate and Nyquist exercises.
+
+No external FFT library is required at runtime. The page embeds a small pure-JavaScript radix-2 FFT so it remains self-contained on GitHub Pages. A later microphone exercise can reuse the same FFT engine or replace it with a packaged FFT library.

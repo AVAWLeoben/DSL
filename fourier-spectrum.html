@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Interactive Fourier transform and FFT exercise: reveal the frequency components and amplitudes hidden inside a composite signal.">
+<title>Fourier Transform & FFT · Exercise Repository</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b1018;--panel:#151d29;--panel2:#1b2636;--line:#334155;
+  --text:#edf4fb;--muted:#9fb0c3;--cyan:#38bdf8;--green:#22c55e;
+  --orange:#f59e0b;--red:#ef4444;--violet:#a78bfa;--paper:#f8fafc;--ink:#111827;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{width:min(1280px,calc(100% - 32px));margin:auto;padding:24px 0 48px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:30px}
+.brand{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.back{font-size:13px;color:var(--muted);padding:8px 10px;border:1px solid var(--line);border-radius:9px;text-decoration:none}
+.back:hover{color:var(--text);border-color:#52708f}
+.eyebrow{font-size:12px;color:#6ee7b7;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+h1{font-size:clamp(34px,5vw,58px);line-height:1.04;letter-spacing:-.045em;margin:12px 0 12px}
+.lead{color:var(--muted);max-width:870px;font-size:16px;line-height:1.65;margin:0 0 24px}
+.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.72fr);gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:15px}
+.plot-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 8px}
+.plot-title h2{font-size:15px;margin:0}
+.plot-title span{font-size:11px;color:var(--muted)}
+.canvas-wrap{position:relative;background:var(--paper);border-radius:10px;overflow:hidden;border:1px solid #cbd5e1}
+canvas{display:block;width:100%;height:280px}
+#spectrum{height:330px}
+.locked{position:absolute;inset:0;display:grid;place-items:center;background:rgba(248,250,252,.94);color:#334155;text-align:center;padding:26px;z-index:2}
+.locked.hidden{display:none}
+.locked strong{display:block;font-size:18px;color:#0f172a;margin-bottom:5px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:9px 0 0;color:var(--muted);font-size:11px}
+.key{display:inline-flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:50%}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0 0}
+button{font:inherit;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--text);padding:9px 12px;cursor:pointer}
+button:hover{border-color:#5d7894}button.primary{background:#075985;border-color:#0ea5e9;font-weight:750}
+button.success{background:#14532d;border-color:#22c55e}
+button:disabled{opacity:.5;cursor:not-allowed}
+.side{display:grid;gap:13px;align-content:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card h2{font-size:14px;margin:0 0 10px}.small{font-size:12px;color:var(--muted);line-height:1.55}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px}
+.stat span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.stat b{display:block;font-size:17px;margin-top:2px}
+.steps{display:grid;gap:10px}.step{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:start}
+.num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#164e63;color:#cffafe;font-size:11px;font-weight:800}
+.step b{font-size:12px}.step p{font-size:11px;color:var(--muted);margin:2px 0 0;line-height:1.45}
+.formula{font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0a111b;border:1px solid #243548;border-radius:8px;padding:10px;overflow:auto;color:#dbeafe}
+.peaks{width:100%;border-collapse:collapse;font-size:12px}.peaks th,.peaks td{padding:7px 6px;border-bottom:1px solid #ffffff12;text-align:right}.peaks th:first-child,.peaks td:first-child{text-align:left}.peaks th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.answer{display:none;margin-top:9px;padding:9px;border-radius:8px;background:#0e2a20;border:1px solid #256f50;font-size:12px;line-height:1.55}.answer.show{display:block}
+.callout{margin-top:13px;border-left:3px solid var(--cyan);padding:10px 12px;background:#0d1825;color:var(--muted);font-size:12px;line-height:1.55}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+@media(max-width:560px){.wrap{width:min(100% - 20px,1280px)}canvas{height:240px}#spectrum{height:280px}.stats{grid-template-columns:1fr 1fr}.topbar{align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">Exercise Repository · Signal analysis</div>
+    <a class="back" href="index.html">← Back to exercises</a>
+  </div>
+
+  <div class="eyebrow">Fourier transformation · spectral analysis</div>
+  <h1>What frequencies are hidden inside a signal?</h1>
+  <p class="lead">A complicated waveform in the time domain can be built from much simpler sinusoidal components. Run the Fast Fourier Transform (FFT) to convert this fixed signal into a frequency spectrum, where each peak reveals a component frequency and its amplitude.</p>
+
+  <div class="layout">
+    <main>
+      <section class="panel">
+        <div class="plot-title">
+          <h2>1 · Time domain</h2>
+          <span>Amplitude versus time</span>
+        </div>
+        <div class="canvas-wrap"><canvas id="timePlot" aria-label="Composite time-domain signal"></canvas></div>
+        <div class="legend">
+          <span class="key"><i class="dot" style="background:#2563eb"></i>Composite signal</span>
+          <span id="componentLegend" style="display:none">
+            <span class="key"><i class="dot" style="background:#ef4444"></i>Component 1</span>
+            <span class="key"><i class="dot" style="background:#22c55e"></i>Component 2</span>
+            <span class="key"><i class="dot" style="background:#a78bfa"></i>Component 3</span>
+          </span>
+        </div>
+        <div class="controls">
+          <button id="playBtn" type="button">▶ Play sample</button>
+          <button id="componentsBtn" type="button">Show source components</button>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:16px">
+        <div class="plot-title">
+          <h2>2 · Frequency domain</h2>
+          <span>Single-sided FFT amplitude spectrum</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="spectrum" aria-label="FFT amplitude spectrum"></canvas>
+          <div id="locked" class="locked"><div><strong>The frequencies are hidden.</strong>Run the FFT to transform the waveform into a spectrum.</div></div>
+        </div>
+        <div class="legend">
+          <span class="key"><i class="dot" style="background:#f59e0b"></i>FFT amplitude</span>
+          <span class="key"><i class="dot" style="background:#ef4444"></i>Detected peak</span>
+        </div>
+        <div class="controls">
+          <button id="fftBtn" class="primary" type="button">Run FFT</button>
+          <button id="resetBtn" type="button">Reset exercise</button>
+        </div>
+        <div class="callout"><b>Read the spectrum:</b> horizontal position tells you the frequency in hertz. Peak height tells you the amplitude of that frequency component in the original signal.</div>
+      </section>
+    </main>
+
+    <aside class="side">
+      <section class="card">
+        <h2>Fixed measurement</h2>
+        <div class="stats">
+          <div class="stat"><span>Sampling rate</span><b>4096 Hz</b></div>
+          <div class="stat"><span>Samples (N)</span><b>4096</b></div>
+          <div class="stat"><span>Duration</span><b>1.00 s</b></div>
+          <div class="stat"><span>Frequency resolution</span><b>1 Hz</b></div>
+          <div class="stat"><span>Nyquist frequency</span><b>2048 Hz</b></div>
+          <div class="stat"><span>Signal components</span><b>3</b></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>From waveform to spectrum</h2>
+        <div class="steps">
+          <div class="step"><span class="num">1</span><div><b>Measure the signal in time.</b><p>The top graph contains 4096 amplitude samples collected during one second.</p></div></div>
+          <div class="step"><span class="num">2</span><div><b>Apply the Fourier transform.</b><p>The FFT efficiently computes the discrete Fourier transform for this power-of-two sample count.</p></div></div>
+          <div class="step"><span class="num">3</span><div><b>Inspect frequency bins.</b><p>Each FFT bin represents a frequency. Here Δf = f<sub>s</sub>/N = 1 Hz.</p></div></div>
+          <div class="step"><span class="num">4</span><div><b>Find the peaks.</b><p>Large magnitudes identify the frequencies that contribute most strongly to the waveform.</p></div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>FFT result</h2>
+        <div id="beforePeaks" class="small">Run the FFT. The three strongest non-zero frequency peaks will appear here.</div>
+        <table id="peakTable" class="peaks" style="display:none">
+          <thead><tr><th>Peak</th><th>Frequency</th><th>Amplitude</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="answer" class="answer"></div>
+      </section>
+
+      <section class="card">
+        <h2>The mathematics</h2>
+        <div class="formula">X[k] = Σ x[n] · e<sup>−j2πkn/N</sup><br><br>f[k] = k · f<sub>s</sub> / N<br>Δf = f<sub>s</sub> / N = 1 Hz</div>
+        <p class="small">For a real-valued signal the FFT contains mirrored positive and negative frequencies. This exercise plots only the positive half, from 0 Hz to the Nyquist frequency.</p>
+      </section>
+
+      <section class="card">
+        <h2>Teaching note</h2>
+        <p class="small">The waveform may look irregular, but it is only the sum of three pure tones. The FFT does not invent new frequencies—it changes the representation so the components become directly visible.</p>
+        <button id="revealBtn" class="success" type="button" disabled>Reveal source values</button>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+
+const FS=4096, N=4096, DURATION=N/FS;
+const COMPONENTS=[
+  {f:120,a:1.00,p:0.15},
+  {f:440,a:0.55,p:0.90},
+  {f:880,a:0.30,p:-0.55}
+];
+
+const signal=new Float64Array(N);
+const sources=COMPONENTS.map(()=>new Float64Array(N));
+for(let n=0;n<N;n++){
+  const t=n/FS;
+  let y=0;
+  COMPONENTS.forEach((c,i)=>{
+    const v=c.a*Math.sin(2*Math.PI*c.f*t+c.p);
+    sources[i][n]=v;
+    y+=v;
+  });
+  signal[n]=y;
+}
+
+function fftRadix2(realInput){
+  const n=realInput.length;
+  if(n<2 || (n & (n-1))!==0) throw new Error("FFT size must be a power of two.");
+  const re=new Float64Array(n), im=new Float64Array(n);
+  for(let i=0;i<n;i++) re[i]=realInput[i];
+
+  let j=0;
+  for(let i=1;i<n;i++){
+    let bit=n>>1;
+    for(;j&bit;bit>>=1) j^=bit;
+    j^=bit;
+    if(i<j){
+      let tr=re[i]; re[i]=re[j]; re[j]=tr;
+      let ti=im[i]; im[i]=im[j]; im[j]=ti;
+    }
+  }
+
+  for(let len=2;len<=n;len<<=1){
+    const angle=-2*Math.PI/len;
+    const wlenR=Math.cos(angle), wlenI=Math.sin(angle);
+    for(let i=0;i<n;i+=len){
+      let wr=1, wi=0;
+      for(let k=0;k<len/2;k++){
+        const uR=re[i+k], uI=im[i+k];
+        const vr=re[i+k+len/2]*wr-im[i+k+len/2]*wi;
+        const vi=re[i+k+len/2]*wi+im[i+k+len/2]*wr;
+        re[i+k]=uR+vr; im[i+k]=uI+vi;
+        re[i+k+len/2]=uR-vr; im[i+k+len/2]=uI-vi;
+        const nextWr=wr*wlenR-wi*wlenI;
+        wi=wr*wlenI+wi*wlenR;
+        wr=nextWr;
+      }
+    }
+  }
+  return {re,im};
+}
+
+function singleSidedAmplitude(input){
+  const {re,im}=fftRadix2(input);
+  const half=N/2;
+  const mags=new Float64Array(half+1);
+  for(let k=0;k<=half;k++){
+    let a=Math.hypot(re[k],im[k])/N;
+    if(k>0 && k<half) a*=2;
+    mags[k]=a;
+  }
+  return mags;
+}
+
+function findPeaks(mags,count=3){
+  const candidates=[];
+  for(let k=1;k<mags.length-1;k++){
+    if(mags[k]>=mags[k-1] && mags[k]>mags[k+1]) candidates.push({k,frequency:k*FS/N,amplitude:mags[k]});
+  }
+  candidates.sort((a,b)=>b.amplitude-a.amplitude);
+  return candidates.slice(0,count).sort((a,b)=>a.frequency-b.frequency);
+}
+
+function setup(canvas){
+  const r=canvas.getBoundingClientRect(), dpr=Math.max(1,window.devicePixelRatio||1);
+  const w=Math.max(320,r.width), h=Math.max(220,r.height);
+  canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr);
+  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx,w,h};
+}
+function axes(ctx,w,h,xmin,xmax,ymin,ymax,xLabel,yLabel,title){
+  const m={l:62,r:20,t:34,b:48}, pw=w-m.l-m.r, ph=h-m.t-m.b;
+  ctx.clearRect(0,0,w,h);ctx.fillStyle="#f8fafc";ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#0f172a";ctx.font="600 13px system-ui";ctx.textAlign="center";ctx.fillText(title,w/2,20);
+  ctx.font="11px system-ui";
+  for(let i=0;i<=5;i++){
+    const x=m.l+pw*i/5, xv=xmin+(xmax-xmin)*i/5;
+    ctx.strokeStyle="#e2e8f0";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,m.t);ctx.lineTo(x,m.t+ph);ctx.stroke();
+    ctx.fillStyle="#475569";ctx.textAlign="center";ctx.fillText(Math.round(xv),x,m.t+ph+18);
+  }
+  for(let i=0;i<=4;i++){
+    const y=m.t+ph*i/4, yv=ymax-(ymax-ymin)*i/4;
+    ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(m.l+pw,y);ctx.stroke();
+    ctx.fillStyle="#475569";ctx.textAlign="right";ctx.fillText(yv.toFixed(ymax<=2?1:0),m.l-8,y+4);
+  }
+  ctx.strokeStyle="#64748b";ctx.strokeRect(m.l,m.t,pw,ph);
+  ctx.fillStyle="#334155";ctx.textAlign="center";ctx.fillText(xLabel,m.l+pw/2,h-10);
+  ctx.save();ctx.translate(14,m.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText(yLabel,0,0);ctx.restore();
+  return {m,pw,ph,x:v=>m.l+(v-xmin)/(xmax-xmin)*pw,y:v=>m.t+(ymax-v)/(ymax-ymin)*ph};
+}
+
+let showComponents=false, fftDone=false, mags=null, peaks=[];
+function drawTime(){
+  const c=document.getElementById("timePlot"),{ctx,w,h}=setup(c);
+  const ms=50, count=Math.floor(FS*ms/1000);
+  let ymax=0;for(let i=0;i<count;i++)ymax=Math.max(ymax,Math.abs(signal[i]));ymax=Math.max(1.25,ymax*1.12);
+  const g=axes(ctx,w,h,0,ms,-ymax,ymax,"Time (ms)","Amplitude","Composite signal in the time domain");
+  function line(arr,color,width,alpha=1){
+    ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineWidth=width;ctx.beginPath();
+    for(let i=0;i<count;i++){const x=g.x(i/FS*1000),y=g.y(arr[i]);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.globalAlpha=1;
+  }
+  if(showComponents){
+    line(sources[0],"#ef4444",1.2,.75);line(sources[1],"#22c55e",1.2,.75);line(sources[2],"#7c3aed",1.2,.75);
+  }
+  line(signal,"#2563eb",2.1,1);
+}
+function drawSpectrum(){
+  const c=document.getElementById("spectrum"),{ctx,w,h}=setup(c);
+  const maxF=1200, maxA=1.15;
+  const g=axes(ctx,w,h,0,maxF,0,maxA,"Frequency (Hz)","Amplitude","Single-sided FFT amplitude spectrum");
+  if(!fftDone||!mags)return;
+  ctx.strokeStyle="#f59e0b";ctx.lineWidth=1.8;ctx.beginPath();
+  const maxK=Math.min(mags.length-1,Math.floor(maxF*N/FS));
+  for(let k=0;k<=maxK;k++){const f=k*FS/N,x=g.x(f),y=g.y(mags[k]);if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();
+  ctx.fillStyle="#ef4444";
+  for(const p of peaks){
+    if(p.frequency>maxF)continue;
+    const x=g.x(p.frequency),y=g.y(p.amplitude);
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#991b1b";ctx.font="600 11px system-ui";ctx.textAlign="center";ctx.fillText(`${Math.round(p.frequency)} Hz`,x,Math.max(38,y-10));ctx.fillStyle="#ef4444";
+  }
+}
+
+function updatePeakTable(){
+  const table=document.getElementById("peakTable"),body=table.querySelector("tbody");
+  body.innerHTML="";
+  peaks.forEach((p,i)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i+1}</td><td>${p.frequency.toFixed(0)} Hz</td><td>${p.amplitude.toFixed(2)}</td>`;
+    body.appendChild(tr);
+  });
+  document.getElementById("beforePeaks").style.display="none";
+  table.style.display="table";
+}
+
+document.getElementById("fftBtn").onclick=()=>{
+  mags=singleSidedAmplitude(signal);
+  peaks=findPeaks(mags,3);
+  fftDone=true;
+  document.getElementById("locked").classList.add("hidden");
+  document.getElementById("revealBtn").disabled=false;
+  updatePeakTable();
+  drawSpectrum();
+};
+document.getElementById("componentsBtn").onclick=e=>{
+  showComponents=!showComponents;
+  e.currentTarget.textContent=showComponents?"Hide source components":"Show source components";
+  document.getElementById("componentLegend").style.display=showComponents?"contents":"none";
+  drawTime();
+};
+document.getElementById("revealBtn").onclick=()=>{
+  const a=document.getElementById("answer");
+  a.classList.add("show");
+  a.innerHTML="<b>Source signal:</b><br>120 Hz at amplitude 1.00<br>440 Hz at amplitude 0.55<br>880 Hz at amplitude 0.30";
+};
+document.getElementById("resetBtn").onclick=()=>{
+  fftDone=false;mags=null;peaks=[];showComponents=false;
+  document.getElementById("locked").classList.remove("hidden");
+  document.getElementById("peakTable").style.display="none";
+  document.getElementById("peakTable").querySelector("tbody").innerHTML="";
+  document.getElementById("beforePeaks").style.display="";
+  document.getElementById("answer").classList.remove("show");
+  document.getElementById("revealBtn").disabled=true;
+  document.getElementById("componentsBtn").textContent="Show source components";
+  document.getElementById("componentLegend").style.display="none";
+  drawTime();drawSpectrum();
+};
+document.getElementById("playBtn").onclick=async()=>{
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx)return;
+  const ac=new AudioCtx();
+  const master=ac.createGain();master.gain.value=.16;master.connect(ac.destination);
+  const now=ac.currentTime;
+  COMPONENTS.forEach(c=>{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type="sine";o.frequency.value=c.f;g.gain.value=c.a;
+    o.connect(g);g.connect(master);o.start(now);o.stop(now+.9);
+  });
+  setTimeout(()=>ac.close().catch(()=>{}),1200);
+};
+
+window.addEventListener("resize",()=>{drawTime();drawSpectrum()});
+drawTime();drawSpectrum();
+})();
+</script>
+</body>
+</html>
