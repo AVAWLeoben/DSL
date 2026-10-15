@@ -1,0 +1,2 @@
+from DSL_TOOLS import split_data_and_train_model
+split_data_and_train_model()
