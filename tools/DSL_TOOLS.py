@@ -573,130 +573,268 @@ def split_data_and_train_model(version=None, size=None, epochs=None, time=None,
 
 
 # --- NO-COPY ULTRALYTICS AUTOSPLIT TOOL ---
-def _show_autosplit_configuration(dataset_path, weights, ignore_empty_images):
-    """Choose the dataset, split percentages, and whether to skip empty images."""
+def _autosplit_source_paths(dataset_paths):
+    """Normalize one directory or a sequence, retaining selection order."""
+    from pathlib import Path
+
+    if dataset_paths is None:
+        return []
+    if isinstance(dataset_paths, (str, os.PathLike)):
+        dataset_paths = [dataset_paths]
+    seen = set()
+    result = []
+    for item in dataset_paths:
+        text = os.fspath(item).strip().strip('"')
+        if not text:
+            continue
+        path = Path(os.path.expanduser(text)).resolve()
+        if not path.is_dir():
+            raise NotADirectoryError(f"Dataset folder not found: {path}")
+        if path not in seen:
+            result.append(path)
+            seen.add(path)
+    return result
+
+
+def _autosplit_layout(selected):
+    """Return (images directory, dataset root) for a source selection."""
+    if selected.name.lower() == "images":
+        return selected, selected.parent
+    if (selected / "images").is_dir():
+        return selected / "images", selected
+    return selected, selected
+
+
+def _show_autosplit_configuration(dataset_paths, weights, ignore_empty_images,
+                                  output_dir):
+    """GUI: add/remove source folders, choose output folder and split settings."""
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
+    from pathlib import Path
 
     root = tk.Tk()
-    root.title("Ultralytics AutoSplit - Text Files Only")
-    root.geometry("650x350")
-    root.minsize(590, 330)
+    root.title("Ultralytics AutoSplit - Multiple Datasets, No Copies")
+    root.geometry("790x535")
+    root.minsize(680, 475)
     try:
         ttk.Style(root).theme_use("clam")
     except tk.TclError:
         pass
 
-    content = ttk.Frame(root, padding=20)
+    content = ttk.Frame(root, padding=18)
     content.pack(fill="both", expand=True)
     content.columnconfigure(1, weight=1)
+    content.rowconfigure(1, weight=1)
 
-    ttk.Label(content, text="Create Train / Validation / Test Lists",
+    ttk.Label(content, text="Combine Dataset Folders into Split Lists",
               font=("Segoe UI", 15, "bold")).grid(
-        row=0, column=0, columnspan=4, sticky="w", pady=(0, 18)
+        row=0, column=0, columnspan=4, sticky="w", pady=(0, 12)
     )
-    dataset_var = tk.StringVar(value=os.fspath(dataset_path) if dataset_path else "")
-    ttk.Label(content, text="Dataset folder").grid(
-        row=1, column=0, sticky="w", padx=(0, 12), pady=6
+    ttk.Label(content, text="Source folders").grid(
+        row=1, column=0, sticky="nw", padx=(0, 12), pady=6
     )
-    ttk.Entry(content, textvariable=dataset_var).grid(
-        row=1, column=1, columnspan=2, sticky="ew", pady=6
-    )
+    source_frame = ttk.Frame(content)
+    source_frame.grid(row=1, column=1, columnspan=2, sticky="nsew", pady=6)
+    source_frame.columnconfigure(0, weight=1)
+    source_frame.rowconfigure(0, weight=1)
+    source_list = tk.Listbox(source_frame, height=7, selectmode="extended",
+                             exportselection=False)
+    source_list.grid(row=0, column=0, sticky="nsew")
+    scrollbar = ttk.Scrollbar(source_frame, command=source_list.yview)
+    scrollbar.grid(row=0, column=1, sticky="ns")
+    source_list.configure(yscrollcommand=scrollbar.set)
 
-    def browse():
-        current = dataset_var.get().strip().strip('"')
-        initial = current if os.path.isdir(current) else os.path.expanduser("~")
-        chosen = filedialog.askdirectory(
-            parent=root, title="Select Dataset Folder", initialdir=initial,
-            mustexist=True,
-        )
+    sources = [str(p) for p in dataset_paths]
+    for path in sources:
+        source_list.insert(tk.END, path)
+
+    output_var = tk.StringVar(value=str(output_dir) if output_dir else "")
+    output_auto = not bool(output_dir)
+
+    def update_default_output():
+        if not output_auto or not sources:
+            return
+        first = Path(sources[0])
+        images_dir, root_dir = _autosplit_layout(first)
+        if len(sources) > 1:
+            output_var.set(str(root_dir / "combined_split_lists"))
+        elif images_dir == root_dir:
+            output_var.set(str(root_dir / "split_lists"))
+        else:
+            output_var.set(str(root_dir))
+
+    update_default_output()
+
+    actions = ttk.Frame(content)
+    actions.grid(row=1, column=3, sticky="n", padx=(12, 0), pady=6)
+
+    def add_folder():
+        initial = sources[-1] if sources else os.path.expanduser("~")
+        chosen = filedialog.askdirectory(parent=root, title="Add Dataset Folder",
+                                         initialdir=initial, mustexist=True)
         if chosen:
-            dataset_var.set(chosen)
+            path = str(Path(chosen).resolve())
+            if path not in sources:
+                sources.append(path)
+                source_list.insert(tk.END, path)
+                update_default_output()
 
-    ttk.Button(content, text="Browse...", command=browse).grid(
-        row=1, column=3, padx=(10, 0), pady=6
-    )
+    def remove_selected():
+        for idx in reversed(source_list.curselection()):
+            del sources[idx]
+            source_list.delete(idx)
+        update_default_output()
+
+    ttk.Button(actions, text="Add Folder...", command=add_folder).pack(
+        fill="x", pady=(0, 8))
+    ttk.Button(actions, text="Remove Selected", command=remove_selected).pack(fill="x")
+
     ttk.Label(
-        content, text="Supports dataset/images + dataset/labels or images and .txt labels together.",
+        content,
+        text="Each folder can contain images/ + labels/ or image files beside their .txt labels.",
         foreground="#555555",
-    ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(0, 15))
+    ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(2, 12))
+
+    ttk.Label(content, text="Output folder").grid(
+        row=3, column=0, sticky="w", padx=(0, 12), pady=6)
+    ttk.Entry(content, textvariable=output_var).grid(
+        row=3, column=1, columnspan=2, sticky="ew", pady=6)
+
+    def browse_output():
+        nonlocal output_auto
+        initial = output_var.get().strip()
+        if not os.path.isdir(initial):
+            initial = str(Path(initial).parent) if initial else os.path.expanduser("~")
+        if not os.path.isdir(initial):
+            initial = os.path.expanduser("~")
+        chosen = filedialog.askdirectory(parent=root, title="Choose Output Folder",
+                                         initialdir=initial, mustexist=True)
+        if chosen:
+            output_auto = False
+            output_var.set(chosen)
+
+    ttk.Button(content, text="Browse...", command=browse_output).grid(
+        row=3, column=3, padx=(12, 0), pady=6)
 
     normalized = [100 * float(w) / sum(weights) for w in weights]
     split_vars = [tk.StringVar(value=f"{v:g}") for v in normalized]
     ttk.Label(content, text="Split percentages").grid(
-        row=3, column=0, sticky="w", padx=(0, 12), pady=6
-    )
+        row=4, column=0, sticky="w", padx=(0, 12), pady=8)
     ratios = ttk.Frame(content)
-    ratios.grid(row=3, column=1, columnspan=3, sticky="w", pady=6)
+    ratios.grid(row=4, column=1, columnspan=3, sticky="w", pady=8)
     for i, label in enumerate(("Train %", "Val %", "Test %")):
         ttk.Label(ratios, text=label).grid(row=0, column=2 * i, padx=(0, 5))
         ttk.Entry(ratios, textvariable=split_vars[i], width=7).grid(
-            row=0, column=2 * i + 1, padx=(0, 18)
-        )
+            row=0, column=2 * i + 1, padx=(0, 18))
 
     ignore_var = tk.BooleanVar(value=bool(ignore_empty_images))
     ttk.Checkbutton(
         content,
         text="IGNORE EMPTY IMAGES (missing, empty or whitespace-only .txt labels)",
         variable=ignore_var,
-    ).grid(row=4, column=0, columnspan=4, sticky="w", pady=(16, 5))
+    ).grid(row=5, column=0, columnspan=4, sticky="w", pady=(12, 4))
     ttk.Label(
         content,
-        text="Creates train.txt, val.txt, test.txt and autosplit_data.yaml. No images are copied.",
+        text="Combines all selected folders into train.txt / val.txt / test.txt + autosplit_data.yaml.",
         foreground="#555555",
-    ).grid(row=5, column=0, columnspan=4, sticky="w", pady=(5, 14))
+    ).grid(row=6, column=0, columnspan=4, sticky="w", pady=(4, 3))
+    ttk.Label(
+        content, text="Only file paths are written. Source images and annotations stay in place.",
+        foreground="#555555",
+    ).grid(row=7, column=0, columnspan=4, sticky="w", pady=(0, 8))
 
     result = {}
 
     def confirm():
-        directory = dataset_var.get().strip().strip('"')
-        if not directory or not os.path.isdir(os.path.expanduser(directory)):
-            messagebox.showerror("Invalid Dataset", "Select an existing dataset folder.", parent=root)
+        if not sources:
+            messagebox.showerror("Missing Dataset", "Add at least one source folder.",
+                                 parent=root)
             return
         try:
+            paths = _autosplit_source_paths(sources)
             values = tuple(float(v.get().strip().replace(",", ".")) for v in split_vars)
-            if not all(0 <= v <= 100 for v in values) or abs(sum(values) - 100) > 0.01:
+            if (not all(0 <= v <= 100 for v in values)
+                    or abs(sum(values) - 100) > 0.01):
                 raise ValueError("Train, validation and test percentages must add up to 100.")
             if values[0] == 0:
                 raise ValueError("Training percentage must be above zero.")
-        except ValueError as exc:
-            messagebox.showerror("Invalid Split", str(exc), parent=root)
+            dest = output_var.get().strip().strip('"')
+            if not dest:
+                raise ValueError("Select an output folder.")
+            dest = Path(os.path.expanduser(dest)).resolve()
+            if dest.exists() and not dest.is_dir():
+                raise ValueError("Output path exists but is not a folder.")
+        except (ValueError, NotADirectoryError) as exc:
+            messagebox.showerror("Invalid Settings", str(exc), parent=root)
+            return
+        existing = [str(dest / filename) for filename in
+                    ("train.txt", "val.txt", "test.txt", "autosplit_data.yaml")
+                    if (dest / filename).exists()]
+        if existing and not messagebox.askyesno(
+            "Replace Existing Split Lists",
+            "These output files already exist and will be replaced:\n\n"
+            + "\n".join(existing) + "\n\nContinue?", parent=root,
+        ):
             return
         result.update({
-            "dataset_path": directory,
+            "dataset_paths": paths,
+            "output_dir": dest,
             "weights": tuple(v / 100 for v in values),
             "ignore_empty_images": ignore_var.get(),
         })
         root.destroy()
 
     controls = ttk.Frame(content)
-    controls.grid(row=6, column=0, columnspan=4, sticky="e", pady=(5, 0))
-    ttk.Button(controls, text="Cancel", command=root.destroy).pack(side="left", padx=(0, 10))
-    ttk.Button(controls, text="Create Split Lists", command=confirm).pack(side="left")
+    controls.grid(row=8, column=0, columnspan=4, sticky="e", pady=(6, 0))
+    ttk.Button(controls, text="Cancel", command=root.destroy).pack(
+        side="left", padx=(0, 10))
+    ttk.Button(controls, text="Create Combined Split Lists", command=confirm).pack(side="left")
     root.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()
     return result or None
 
 
-def _read_autosplit_names(dataset_root, eligible_images, image_to_label):
-    """Reuse existing class names or infer numbered placeholders from labels."""
-    import yaml  # installed as an Ultralytics dependency
+def _autosplit_read_names(dataset_root):
+    """Get explicit class names from an original dataset YAML, if supplied."""
+    import yaml
 
     for filename in ("data.yaml", "dataset.yaml"):
         source = dataset_root / filename
         if source.is_file():
             data = yaml.safe_load(source.read_text(encoding="utf-8-sig")) or {}
+            if not isinstance(data, dict):
+                raise ValueError(f"Invalid class YAML: {source}")
             names = data.get("names")
             if isinstance(names, list):
-                return {i: str(name) for i, name in enumerate(names)}, False
+                return {i: str(name) for i, name in enumerate(names)}
             if isinstance(names, dict) and names:
-                return {int(key): str(value) for key, value in names.items()}, False
-            if isinstance(data.get("nc"), int) and data["nc"] > 0:
-                return {i: f"class_{i}" for i in range(data["nc"])}, True
+                try:
+                    return {int(key): str(value) for key, value in names.items()}
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(f"Invalid class ID in {source}") from exc
+    return None
 
-    max_class = -1
+
+def _autosplit_combined_names(sources, eligible_images, label_for):
+    """Validate that source datasets use compatible class IDs and names."""
+    names = None
+    names_origin = None
+    for _, root_dir in sources:
+        source_names = _autosplit_read_names(root_dir)
+        if source_names is None:
+            continue
+        if names is None:
+            names, names_origin = source_names, root_dir
+        elif source_names != names:
+            raise ValueError(
+                f"Class names do not match across dataset folders:\n"
+                f"  {names_origin}: {names}\n  {root_dir}: {source_names}\n"
+                "Class ID mappings must be identical before combining datasets."
+            )
+
+    max_class_id = -1
     for image in eligible_images:
-        label = image_to_label(image)
+        label = label_for(image)
         if not label.is_file():
             continue
         with label.open("r", encoding="utf-8-sig", errors="replace") as stream:
@@ -708,28 +846,41 @@ def _read_autosplit_names(dataset_root, eligible_images, image_to_label):
                     class_id = int(columns[0])
                 except ValueError:
                     continue
-                if 0 <= class_id <= 1000:
-                    max_class = max(max_class, class_id)
+                if class_id >= 0:
+                    max_class_id = max(max_class_id, class_id)
 
-    # If all images are backgrounds, create a placeholder and warn the user.
-    return {i: f"class_{i}" for i in range(max(1, max_class + 1))}, True
+    if names is None:
+        if max_class_id > 1000:
+            raise ValueError("Unexpected class ID > 1000; check annotation files.")
+        return {i: f"class_{i}" for i in range(max(1, max_class_id + 1))}, True
+
+    if max_class_id >= 0 and max_class_id not in names:
+        raise ValueError(
+            f"Annotation uses class ID {max_class_id}, but the supplied data.yaml "
+            "does not define that ID. Check class mappings before training."
+        )
+    return names, False
 
 
 def autosplit_dataset(dataset_path=None, weights=(0.8, 0.2, 0.0),
-                      ignore_empty_images=True):
-    """Create split text files using Ultralytics AutoSplit without copying files.
+                      ignore_empty_images=True, dataset_paths=None, output_dir=None):
+    """Combine one or more datasets into YOLO split lists, without copying images.
 
-    When ``dataset_path`` is omitted, a Tkinter window includes the checkbox
-    "IGNORE EMPTY IMAGES" (on by default). This excludes images when their
-    corresponding YOLO label file is missing, empty, or whitespace-only.
+    ``dataset_path`` accepts one folder or a list of folders for compatibility.
+    ``dataset_paths`` is the clearer multi-source keyword argument.
+    With no paths provided, opens a Tkinter window allowing the user to add
+    multiple source folders, remove selections, choose an output directory,
+    set split ratios and toggle IGNORE EMPTY IMAGES (on by default).
 
-    Supports both dataset/images + dataset/labels and a mixed folder containing
-    images and .txt annotations side by side. Writes train.txt, val.txt,
-    test.txt and autosplit_data.yaml into the dataset root. Does not alter the
-    existing split_data_and_train_model() workflow.
+    Each source may contain ``images/`` and ``labels/`` subfolders, or mixed
+    images and labels together. The function invokes Ultralytics autosplit
+    individually on each images folder, then combines the split assignments
+    into three absolute-path manifests with duplicate paths removed. Existing
+    autosplit_*.txt files in source folders are restored, not overwritten.
 
-    Ultralytics ``annotated_only=True`` skips missing labels but not empty ones,
-    so we also check label contents before writing the final lists.
+    IMPORTANT: Class IDs must have the same meaning in every source dataset.
+    When data.yaml class names exist, mismatches raise an error. If no class
+    YAML exists, placeholder names are generated and need user verification.
     """
     import math
     from pathlib import Path
@@ -740,159 +891,159 @@ def autosplit_dataset(dataset_path=None, weights=(0.8, 0.2, 0.0),
         raise ValueError("weights must be (train, val, test), nonnegative, with train > 0.")
     weights = tuple(w / sum(weights) for w in weights)
 
-    if dataset_path is None:
-        options = _show_autosplit_configuration(dataset_path, weights, ignore_empty_images)
+    if dataset_path is not None and dataset_paths is not None:
+        raise ValueError("Use dataset_path or dataset_paths, not both.")
+    supplied = dataset_paths if dataset_paths is not None else dataset_path
+    selected_paths = _autosplit_source_paths(supplied)
+
+    if not selected_paths:
+        options = _show_autosplit_configuration([], weights, ignore_empty_images, output_dir)
         if options is None:
             print("AutoSplit cancelled by the user.")
             return None
-        dataset_path = options["dataset_path"]
+        selected_paths = options["dataset_paths"]
         weights = options["weights"]
         ignore_empty_images = options["ignore_empty_images"]
+        output_dir = options["output_dir"]
 
-    selected = Path(os.path.expanduser(os.fspath(dataset_path).strip().strip('"'))).resolve()
-    if not selected.is_dir():
-        raise NotADirectoryError(f"Dataset folder not found: {selected}")
+    sources = [_autosplit_layout(p) for p in selected_paths]
+    if output_dir is None:
+        first_images, first_root = sources[0]
+        if len(selected_paths) > 1:
+            output_dir = first_root / "combined_split_lists"
+        else:
+            output_dir = first_root / "split_lists" if first_images == first_root else first_root
+    output_dir = Path(os.path.expanduser(os.fspath(output_dir).strip().strip('"'))).resolve()
+    if output_dir.exists() and not output_dir.is_dir():
+        raise NotADirectoryError(f"Output folder is not a directory: {output_dir}")
 
-    if selected.name == "images":
-        images_dir, dataset_root = selected, selected.parent
-    elif (selected / "images").is_dir():
-        images_dir, dataset_root = selected / "images", selected
-    else:
-        images_dir, dataset_root = selected, selected
-
-    # This uses the exact label lookup that the Ultralytics YOLO loader uses:
-    # /images/ -> /labels/ (otherwise the .txt is next to the image).
     _load_dependency("ultralytics", "ultralytics")
     from ultralytics.data.split import autosplit
     from ultralytics.data.utils import IMG_FORMATS, img2label_paths
-
-    if not any(p.is_file() and p.suffix[1:].lower() in IMG_FORMATS
-               for p in images_dir.rglob("*")):
-        raise ValueError(f"No supported images found in {images_dir}")
+    import yaml
 
     def label_for(image):
         return Path(img2label_paths([str(image)])[0])
 
-    def has_nonempty_label(label):
+    def nonempty_label(label):
         if not label.is_file():
             return False
         with label.open("r", encoding="utf-8-sig", errors="replace") as stream:
             return any(line.strip() for line in stream)
 
-    raw_paths = {
-        kind: images_dir.parent / f"autosplit_{kind}.txt"
-        for kind in ("train", "val", "test")
+    raw_names = ("train", "val", "test")
+    combined = {split: [] for split in raw_names}
+    seen_images = set()
+    stats = {
+        "excluded_empty_images": 0,
+        "excluded_duplicates": 0,
+        "excluded_old_split_images": 0,
     }
-    # On mixed datasets, Ultralytics writes its intermediates in the dataset's
-    # parent directory. Restore any pre-existing files there afterwards.
-    restore_external = images_dir.parent != dataset_root
-    original = ({p: p.read_bytes() if p.exists() else None for p in raw_paths.values()}
-                if restore_external else {})
-
-    print(f"AutoSplit images: {images_dir}")
+    total_seen = 0
+    print(f"Combining {len(sources)} source dataset(s), no image/label copies.")
     print(f"Ignore empty images: {'YES' if ignore_empty_images else 'NO'}")
-    print("Using Ultralytics autosplit to create split assignments...")
-    split_images = {kind: [] for kind in raw_paths}
-    skipped = 0
-    skipped_previously_split = 0
-    try:
-        # Always split all images first: we can then exclude BOTH missing
-        # and blank labels, and report the real number excluded.
-        autosplit(path=images_dir, weights=weights, annotated_only=False)
-        for kind, source in raw_paths.items():
-            if not source.is_file():
-                continue  # autosplit omits the file when a split receives zero images
-            for value in source.read_text(encoding="utf-8-sig").splitlines():
-                if not value.strip():
+    print(f"Output folder: {output_dir}")
+    for idx, (images_dir, root_dir) in enumerate(sources, start=1):
+        print(f"[{idx}/{len(sources)}] Ultralytics autosplit: {images_dir}")
+        if not any(p.is_file() and p.suffix[1:].lower() in IMG_FORMATS
+                   for p in images_dir.rglob("*")):
+            raise ValueError(f"No supported images found in {images_dir}")
+
+        intermediates = {
+            kind: images_dir.parent / f"autosplit_{kind}.txt"
+            for kind in raw_names
+        }
+        # Ultralytics deletes/recreates intermediates in images_dir.parent.
+        # Preserve any user files already present there, even after a failure.
+        original = {path: path.read_bytes() if path.exists() else None
+                    for path in intermediates.values()}
+        try:
+            autosplit(path=images_dir, weights=weights, annotated_only=False)
+            for kind, raw in intermediates.items():
+                if not raw.is_file():
                     continue
-                image = (source.parent / value.strip()).resolve()
-                if not image.is_file():
-                    raise FileNotFoundError(f"AutoSplit returned a missing image: {image}")
-                if images_dir == dataset_root:
-                    # Ignore old YOLOSplitter output stored below a mixed input
-                    # folder, so duplicates of the originals are not included.
-                    top_level = image.relative_to(images_dir).parts[0].lower()
-                    if (top_level == "split_lists" or top_level == "splitted_dataset"
-                            or top_level.startswith("splitted_dataset_")):
-                        skipped_previously_split += 1
+                for entry in raw.read_text(encoding="utf-8-sig").splitlines():
+                    if not entry.strip():
                         continue
-                if ignore_empty_images and not has_nonempty_label(label_for(image)):
-                    skipped += 1
-                    continue
-                split_images[kind].append(image)
-    finally:
-        if restore_external:
-            for path, contents in original.items():
-                if contents is None:
+                    image = (raw.parent / entry.strip()).resolve()
+                    if not image.is_file():
+                        raise FileNotFoundError(f"Ultralytics AutoSplit returned missing image: {image}")
+                    total_seen += 1
+                    if image in seen_images:
+                        stats["excluded_duplicates"] += 1
+                        continue
+                    seen_images.add(image)
+                    # Skip copies left behind by the original YoloSplitter tool.
+                    if images_dir == root_dir:
+                        parts = image.relative_to(images_dir).parts
+                        if parts and (parts[0].lower() in (
+                                "split_lists", "combined_split_lists", "splitted_dataset")
+                                or parts[0].lower().startswith("splitted_dataset_")):
+                            stats["excluded_old_split_images"] += 1
+                            continue
+                    if ignore_empty_images and not nonempty_label(label_for(image)):
+                        stats["excluded_empty_images"] += 1
+                        continue
+                    combined[kind].append(image)
+        finally:
+            for path, previous_bytes in original.items():
+                if previous_bytes is None:
                     path.unlink(missing_ok=True)
                 else:
-                    path.write_bytes(contents)
+                    path.write_bytes(previous_bytes)
 
-    total = sum(len(images) for images in split_images.values())
-    if total == 0:
-        raise ValueError("No eligible images found. Check labels and the ignore-empty option.")
+    total = sum(len(group) for group in combined.values())
+    if not total:
+        raise ValueError("No eligible images found. Check your labels and the ignore-empty setting.")
+    if not combined["train"]:
+        raise ValueError("Train split is empty. Increase train percentage or add more images.")
 
-    # For mixed datasets, a root-level train.txt might be the annotation of
-    # train.jpg. Put the manifests in a separate small directory so annotations
-    # with those names cannot be accidentally overwritten.
-    output_dir = dataset_root / "split_lists" if images_dir == dataset_root else dataset_root
-    output_dir.mkdir(exist_ok=True)
-
-    # Absolute image paths work reliably regardless of the current directory.
-    outputs = {}
-    for kind, images in split_images.items():
+    images = [image for group in combined.values() for image in group]
+    names, placeholders = _autosplit_combined_names(sources, images, label_for)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    results = {}
+    for kind, group in combined.items():
         target = output_dir / f"{kind}.txt"
-        text = "".join(f"{image.as_posix()}\n" for image in images)
-        target.write_text(text, encoding="utf-8")
-        outputs[kind] = target
-        print(f"{kind}: {len(images)} images -> {target}")
-        if weights[("train", "val", "test").index(kind)] > 0 and not images:
-            print(f"WARNING: {kind} is empty. Adjust percentages or use more images.")
+        target.write_text("".join(f"{p.as_posix()}\n" for p in group), encoding="utf-8")
+        results[kind] = str(target)
+        print(f"{kind}: {len(group)} images -> {target}")
+        if weights[raw_names.index(kind)] > 0 and not group:
+            print(f"WARNING: {kind} received no images. This is a random split; try more images.")
 
-    # Also filter the generated autosplit_*.txt files when they are inside the
-    # dataset. Their content should agree with the clean train/val/test lists.
-    if not restore_external:
-        for kind, raw in raw_paths.items():
-            raw.write_text(outputs[kind].read_text(encoding="utf-8"), encoding="utf-8")
-
-    eligible = [image for images in split_images.values() for image in images]
-    names, placeholder_names = _read_autosplit_names(dataset_root, eligible, label_for)
-    import yaml
-
-    list_prefix = "split_lists/" if output_dir != dataset_root else ""
     yaml_data = {
-        "path": str(dataset_root),
-        "train": f"{list_prefix}train.txt",
-        "val": f"{list_prefix}val.txt",
+        "path": str(output_dir),
+        "train": "train.txt",
+        "val": "val.txt",
         "names": names,
     }
     if weights[2] > 0:
-        yaml_data["test"] = f"{list_prefix}test.txt"
-    yaml_path = dataset_root / "autosplit_data.yaml"
-    yaml_path.write_text(yaml.safe_dump(yaml_data, sort_keys=False, allow_unicode=True),
-                         encoding="utf-8")
+        yaml_data["test"] = "test.txt"
+    yaml_path = output_dir / "autosplit_data.yaml"
+    yaml_path.write_text(
+        yaml.safe_dump(yaml_data, sort_keys=False, allow_unicode=True),
+        encoding="utf-8")
 
-    if placeholder_names:
-        print("NOTE: No class names were found in data.yaml; edit 'names' in "
-              "autosplit_data.yaml to match your classes.")
-    print(f"Excluded images with missing/empty labels: {skipped}")
-    if skipped_previously_split:
-        print(f"Skipped {skipped_previously_split} images under earlier split output folders.")
-    print(f"YOLO dataset config: {yaml_path}")
-    print("Original images and label files were not moved or copied.")
+    if placeholders:
+        print("NOTE: No shared class names found in source data.yaml files. "
+              "Verify/edit the class names in autosplit_data.yaml before training.")
+    print(f"Total eligible image paths: {total}")
+    print(f"Excluded missing/empty/whitespace labels: {stats['excluded_empty_images']}")
+    print(f"Deduplicated overlapping source paths: {stats['excluded_duplicates']}")
+    print(f"YOLO dataset configuration: {yaml_path}")
+    print("Source images, labels and pre-existing AutoSplit files were left unchanged.")
     return {
-        "train": str(outputs["train"]),
-        "val": str(outputs["val"]),
-        "test": str(outputs["test"]),
+        **results,
         "yaml": str(yaml_path),
-        "counts": {kind: len(images) for kind, images in split_images.items()},
-        "skipped_empty_labels_after_autosplit": skipped,
-        "skipped_old_split_images": skipped_previously_split,
+        "counts": {kind: len(group) for kind, group in combined.items()},
+        "source_folders": [str(p) for p in selected_paths],
+        "output_dir": str(output_dir),
+        **stats,
     }
 
+
 if __name__ == "__main__":
-    # Existing default still starts the YOLOSplitter training setup.
-    # Run `python DSL_TOOLS_updated.py --autosplit` to open the new split-list GUI.
+    # Original default still starts the YOLOSplitter training setup.
+    # `python DSL_TOOLS_multi_folder.py --autosplit` opens the multi-folder GUI.
     if "--autosplit" in sys.argv[1:]:
         autosplit_dataset()
     else:
