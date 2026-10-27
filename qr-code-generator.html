@@ -56,7 +56,14 @@
     .ready { font-size:11px; font-weight:700; color:var(--mint); border:1px solid #366354; border-radius:99px; padding:5px 10px; }
     .qr-frame { background:#fff; border-radius:15px; display:grid; place-items:center; width:min(100%,330px); aspect-ratio:1; margin:9px auto 18px; padding:14px; box-shadow:0 12px 30px #00000030; }
     #qr-preview { width:100%; height:100%; display:grid; place-items:center; }
-    #qr-preview svg { width:100%; height:100%; display:block; }
+    #qr-preview { padding:0; border:0; background:transparent; border-radius:4px; cursor:copy; }
+    #qr-preview:disabled { cursor:default; }
+    #qr-preview img { width:100%; height:100%; display:block; object-fit:contain; }
+    #qr-preview:hover:not(:disabled) { outline:3px solid #00727D; outline-offset:5px; }
+    #qr-preview:focus-visible { outline:3px solid #00727D; outline-offset:5px; }
+    .copy-hint { text-align:center; font-size:12px; color:var(--mint); margin:-8px 0 8px; }
+    .copy-feedback { text-align:center; font-size:12px; color:var(--muted); margin:0 0 12px; min-height:19px; }
+    .copy-button { grid-column:1/-1; }
     .preview-caption { text-align:center; color:var(--muted); font-size:12px; margin:0 auto 19px; overflow-wrap:anywhere; max-width:440px; }
     .actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; margin-top:auto; }
     .secondary { display:inline-flex; gap:7px; justify-content:center; align-items:center; padding:13px 10px; border:1px solid #476e82; color:var(--text); background:#182d40; border-radius:10px; font-weight:700; font-size:13px; }
@@ -81,7 +88,7 @@
     <section class="hero" aria-labelledby="page-title">
       <div class="eyebrow">DSL · Browser-based utility</div>
       <h1 id="page-title">URL to <em>QR code.</em></h1>
-      <p class="intro">Turn a web link into a ready-to-share QR code. Choose a colour, preview the result, and save it as PNG or SVG.</p>
+      <p class="intro">Turn a web link into a ready-to-share QR code. Choose a colour, click to copy the image, or download it as PNG or SVG.</p>
     </section>
 
     <div class="workspace">
@@ -109,9 +116,12 @@
 
       <section class="panel preview-panel" aria-labelledby="preview-title">
         <div class="preview-head"><div class="panel-head"><span class="step">02</span><h2 id="preview-title">Preview &amp; download</h2></div><span class="ready" id="state" role="status" aria-live="polite">Ready</span></div>
-        <div class="qr-frame"><div id="qr-preview" role="img" aria-label="QR code preview"></div></div>
+        <div class="qr-frame"><button id="qr-preview" type="button" aria-label="Copy QR code image to clipboard" title="Left-click to copy the QR image, or right-click for Copy image" disabled></button></div>
+        <p class="copy-hint">Click the QR image to copy it.</p>
         <p class="preview-caption" id="preview-caption">Your QR code is generated locally and is ready to download.</p>
+        <p class="copy-feedback" id="copy-feedback" role="status" aria-live="polite"></p>
         <div class="actions">
+          <button class="primary copy-button" type="button" id="copy" disabled>⧉ Copy QR image</button>
           <button class="secondary" type="button" id="png" disabled>↓ Download PNG</button>
           <button class="secondary" type="button" id="svg" disabled>↓ Download SVG</button>
         </div>
@@ -1377,6 +1387,8 @@ return QRCode;
       const error = document.getElementById('url-error');
       const preview = document.getElementById('qr-preview');
       const caption = document.getElementById('preview-caption');
+      const copyFeedback = document.getElementById('copy-feedback');
+      const copyButton = document.getElementById('copy');
       const state = document.getElementById('state');
       const downloadPng = document.getElementById('png');
       const downloadSvg = document.getElementById('svg');
@@ -1411,11 +1423,76 @@ return QRCode;
         return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${side} ${side}" shape-rendering="crispEdges" role="presentation" aria-hidden="true"><rect width="${side}" height="${side}" fill="#FFFFFF"/><path d="${cells.join('')}" fill="${color}"/></svg>`;
       }
 
+      // Generate a real PNG image for the preview. This also enables the
+      // browser's native right-click > Copy image menu on the QR graphic.
+      function pngCanvas(qr, color) {
+        const size = 1024;
+        const count = qr.getModuleCount();
+        const modules = count + 8;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Image generation is not supported in this browser.');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = color;
+        for (let row = 0; row < count; row++) {
+          for (let col = 0; col < count; col++) {
+            if (!qr.isDark(row, col)) continue;
+            const left = Math.round((col + 4) * size / modules);
+            const top = Math.round((row + 4) * size / modules);
+            const right = Math.round((col + 5) * size / modules);
+            const bottom = Math.round((row + 5) * size / modules);
+            ctx.fillRect(left, top, right-left, bottom-top);
+          }
+        }
+        return canvas;
+      }
+
+      function renderPreview() {
+        if (!current) return;
+        current.pngDataUrl = pngCanvas(current.qr, current.color).toDataURL('image/png');
+        const img = document.createElement('img');
+        img.src = current.pngDataUrl;
+        img.alt = '';
+        img.draggable = true;
+        preview.replaceChildren(img);
+        preview.disabled = false;
+        copyFeedback.textContent = '';
+      }
+
+      function pngBlob() {
+        if (!current?.pngDataUrl) throw new Error('Generate a QR code first.');
+        const binary = atob(current.pngDataUrl.split(',')[1]);
+        const data = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+        return new Blob([data], { type:'image/png' });
+      }
+
+      async function copyImage() {
+        if (!current) return;
+        if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+          copyFeedback.textContent = 'Direct copying requires a supported browser and HTTPS (or localhost). Right-click the QR image and choose “Copy image” instead.';
+          return;
+        }
+        try {
+          // Clipboard write is called directly during the user click so the
+          // browser recognises the required user gesture.
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob() })]);
+          copyFeedback.textContent = 'QR image copied! Paste it with Ctrl+V (or Cmd+V).';
+        } catch (err) {
+          copyFeedback.textContent = 'Browser blocked clipboard access. Right-click the QR image and choose “Copy image”, or download the PNG.';
+        }
+      }
+
       function setInvalid(message) {
         current = null;
         error.textContent = message;
         urlInput.setAttribute('aria-invalid', 'true');
         preview.replaceChildren();
+        preview.disabled = true;
+        copyButton.disabled = true;
+        copyFeedback.textContent = '';
         caption.textContent = 'Enter a valid link to generate a preview.';
         state.textContent = 'Needs URL';
         downloadPng.disabled = true;
@@ -1430,13 +1507,14 @@ return QRCode;
           qr.addData(url);
           qr.make();
           current = { qr, url, color:selected };
-          preview.innerHTML = svgMarkup(qr, selected);
+          renderPreview();
           caption.textContent = `Link encoded: ${url}`;
           state.textContent = 'Ready';
           error.textContent = '';
           urlInput.setAttribute('aria-invalid', 'false');
           downloadPng.disabled = false;
           downloadSvg.disabled = false;
+          copyButton.disabled = false;
         } catch (err) {
           const tooLong = /too long|overflow|undefined|out of range/i.test(String(err.message));
           setInvalid(tooLong ? 'This URL is too long for a QR code. Try a shorter link.' : err.message);
@@ -1458,6 +1536,9 @@ return QRCode;
       urlInput.addEventListener('input', () => {
         clearTimeout(schedule);
         current = null;
+        preview.disabled = true;
+        copyButton.disabled = true;
+        copyFeedback.textContent = '';
         downloadPng.disabled = true;
         downloadSvg.disabled = true;
         state.textContent = 'Updating';
@@ -1469,7 +1550,7 @@ return QRCode;
           swatches.forEach(option => option.setAttribute('aria-pressed', String(option === button)));
           if (current) {
             current.color = selected;
-            preview.innerHTML = svgMarkup(current.qr, selected);
+            renderPreview();
           } else {
             generate();
           }
@@ -1480,33 +1561,12 @@ return QRCode;
         const svg = svgMarkup(current.qr, current.color);
         saveBlob(new Blob([svg], { type:'image/svg+xml;charset=utf-8' }), 'dsl-qr-code.svg');
       });
+      preview.addEventListener('click', copyImage);
+      copyButton.addEventListener('click', copyImage);
       downloadPng.addEventListener('click', () => {
         if (!current) return;
-        const {qr,color} = current;
-        const size = 1024;
-        const count = qr.getModuleCount();
-        const modules = count + 8;
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { error.textContent = 'PNG export is not supported in this browser.'; return; }
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = color;
-        for (let row = 0; row < count; row++) {
-          for (let col = 0; col < count; col++) {
-            if (!qr.isDark(row, col)) continue;
-            const left = Math.round((col + 4) * size / modules);
-            const top = Math.round((row + 4) * size / modules);
-            const right = Math.round((col + 5) * size / modules);
-            const bottom = Math.round((row + 5) * size / modules);
-            ctx.fillRect(left, top, right-left, bottom-top);
-          }
-        }
-        canvas.toBlob(blob => {
-          if (blob) saveBlob(blob, 'dsl-qr-code.png');
-          else error.textContent = 'Unable to export PNG in this browser.';
-        }, 'image/png');
+        try { saveBlob(pngBlob(), 'dsl-qr-code.png'); }
+        catch (err) { error.textContent = err.message; }
       });
       generate();
     })();
