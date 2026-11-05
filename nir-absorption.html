@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Interactive teaching demonstration of wavelength-dependent NIR absorption, molecular vibration, and transmitted-wave attenuation in water, PE, and PP.">
+<title>NIR Absorption &amp; Molecular Vibration · Interactive Labs</title>
+<style>
+:root {
+  color-scheme:dark;
+  --bg:#0f1115; --panel:#171a21; --panel2:#20242d; --border:#303744;
+  --text:#eef1f5; --muted:#a8b3c2; --accent:#38bdf8; --red:#ff685a;
+  --peach:#ffbea1; --mint:#6ae0bc;
+}
+* { box-sizing:border-box }
+html { scroll-behavior:smooth }
+body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; line-height:1.5 }
+button,input { font:inherit }
+button { cursor:pointer }
+a { color:var(--accent); text-decoration:none }
+a:hover { text-decoration:underline }
+.wrap { width:min(1400px,calc(100% - 32px)); margin:0 auto; padding:18px 0 40px }
+.back { display:inline-flex; align-items:center; gap:7px; color:var(--muted); font-size:13px; margin:3px 0 16px }
+h1 { font-size:clamp(24px,3vw,34px); letter-spacing:-.03em; line-height:1.15; margin:0 0 7px }
+.sub { color:var(--muted); font-size:14px; margin:0 0 20px; max-width:820px }
+.layout { display:grid; grid-template-columns:minmax(0,2.1fr) minmax(295px,1fr); gap:14px; align-items:start }
+.stack { min-width:0; display:grid; gap:14px }
+.panel { min-width:0; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:15px }
+.panel h2 { font-size:15px; margin:0 0 11px; letter-spacing:-.01em }
+.canvas-shell { overflow:hidden; border-radius:10px; border:1px solid #2b3644; background:#101823 }
+canvas { display:block; width:100%; height:auto }
+#scene { aspect-ratio:1100/470 }
+#spectrum { aspect-ratio:900/290 }
+.legend { display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px; margin-top:10px; color:var(--muted); font-size:12px }
+.key { display:inline-block; width:17px; height:3px; vertical-align:middle; border-radius:2px; margin-right:6px }
+.key.incident { background:var(--red) }
+.key.transmitted { background:var(--peach) }
+.key.molecule { background:var(--accent) }
+.note { font-size:12px; line-height:1.5; color:var(--muted); margin:10px 0 0 }
+.control-title { display:block; font-size:12px; font-weight:700; color:#d7e2ed; text-transform:uppercase; letter-spacing:.08em; margin-bottom:9px }
+.materials { display:grid; grid-template-columns:repeat(3,1fr); gap:7px }
+.material-btn { border:1px solid var(--border); border-radius:9px; padding:11px 5px; background:#242b36; color:#e6eef8; font-size:14px; font-weight:750; min-height:48px }
+.material-btn[aria-pressed="true"] { border-color:#5bd5f8; background:#16455c; color:#f0fcff; box-shadow:inset 0 0 0 1px #5bd5f866 }
+.material-btn:hover { background:#334457 }
+button:focus-visible,input:focus-visible { outline:2px solid var(--accent); outline-offset:3px }
+.group { margin-top:16px; padding-top:15px; border-top:1px solid var(--border) }
+.range-heading { display:flex; align-items:center; justify-content:space-between; gap:9px; margin-bottom:6px; font-size:13px; color:var(--muted) }
+.readout { color:#f2f7fd; font-size:15px; font-weight:750; font-variant-numeric:tabular-nums }
+input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; margin:7px 0 0 }
+.scale { display:flex; justify-content:space-between; color:#8494a7; font-size:11px }
+.actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:13px }
+.action { min-height:42px; border:1px solid #435263; border-radius:9px; color:var(--text); background:#283443; font-size:13px; font-weight:650 }
+.action.primary { border-color:#138cbb; background:#075985 }
+.action[aria-pressed="false"].primary { background:#3a2930; border-color:#7b4650 }
+.action:hover { filter:brightness(1.15) }
+.stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:12px }
+.stat { min-width:0; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:11px }
+.stat .k { color:var(--muted); font-size:11px; line-height:1.3 }
+.stat .v { font-size:clamp(18px,2vw,23px); font-weight:750; margin-top:4px; font-variant-numeric:tabular-nums }
+.status { margin-top:13px; border:1px solid var(--border); border-radius:9px; padding:10px 12px; color:#ccd8e5; background:#10151e; font-size:12px; line-height:1.5 }
+.lesson { margin-top:14px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px }
+.lesson-item { border:1px solid var(--border); border-radius:10px; background:var(--panel2); padding:12px; font-size:12px; color:var(--muted) }
+.lesson-item strong { display:block; color:#eaf2fb; font-size:13px; margin-bottom:5px }
+.checkbox { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--muted); cursor:pointer }
+.checkbox input { accent-color:var(--accent) }
+.footer { color:var(--muted); font-size:12px; margin-top:18px }
+@media(max-width:950px) { .layout { grid-template-columns:1fr } }
+@media(max-width:600px) { .wrap { width:min(100% - 20px,1400px) } .panel { padding:11px } .lesson { grid-template-columns:1fr } .stats { margin-top:10px } }
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a class="back" href="index.html" aria-label="Back to exercise overview">← All exercises</a>
+  <h1>NIR Absorption &amp; Molecular Vibration</h1>
+  <p class="sub">Explore how changing the near-infrared wavelength changes the absorption spectrum, the vibration of a simplified molecular model, and the transmitted wave.</p>
+
+  <div class="layout">
+    <div class="stack">
+      <section class="panel" aria-label="NIR wave and molecular vibration animation">
+        <h2>Incident light → material → transmitted light</h2>
+        <div class="canvas-shell"><canvas id="scene" width="1100" height="470" aria-label="Animated NIR wave entering a pair of vibrating masses linked by a spring, followed by an attenuated transmitted wave" role="img"></canvas></div>
+        <div class="legend">
+          <span><i class="key incident"></i>Incident wave</span>
+          <span><i class="key transmitted"></i>Transmitted wave</span>
+          <span><i class="key molecule"></i>Bond vibration (schematic)</span>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="NIR absorption spectrum">
+        <h2>Wavelength-dependent absorption spectrum</h2>
+        <div class="canvas-shell"><canvas id="spectrum" width="900" height="290" aria-label="Illustrative NIR absorption spectrum with moving cursor at the selected wavelength" role="img"></canvas></div>
+        <p class="note">Spectra are illustrative Gaussian teaching models, not measured reference data. The two masses and spring symbolize an absorbing vibrational mode, not the actual molecular structure of water or a polymer chain.</p>
+      </section>
+    </div>
+
+    <aside class="panel" aria-label="Interactive controls">
+      <h2>Simulation controls</h2>
+      <span class="control-title">Choose a material</span>
+      <div class="materials" role="group" aria-label="Choose a material">
+        <button type="button" class="material-btn" data-material="Water" aria-pressed="true">Water</button>
+        <button type="button" class="material-btn" data-material="Polyethylene" aria-pressed="false">PE</button>
+        <button type="button" class="material-btn" data-material="Polypropylene" aria-pressed="false">PP</button>
+      </div>
+      <p id="materialDesc" class="note">Water (H₂O) · strong illustrative absorption near 1450 and 1940 nm.</p>
+
+      <div class="group">
+        <label class="range-heading" for="wavelength"><span>Wavelength</span><output class="readout" id="wavelengthVal" for="wavelength">1450 nm</output></label>
+        <input id="wavelength" type="range" min="800" max="2500" step="5" value="1450">
+        <div class="scale"><span>800 nm</span><span>2500 nm</span></div>
+      </div>
+
+      <div class="group">
+        <label class="range-heading" for="speed"><span>Animation speed</span><output class="readout" id="speedVal" for="speed">1.0×</output></label>
+        <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1">
+        <div class="scale"><span>0.25×</span><span>2.0×</span></div>
+        <div class="actions">
+          <button type="button" class="action primary" id="emitterBtn" aria-pressed="true">Emitter: ON</button>
+          <button type="button" class="action" id="pauseBtn" aria-pressed="false">Pause motion</button>
+          <button type="button" class="action" id="resetBtn">Reset</button>
+        </div>
+        <label class="checkbox"><input type="checkbox" id="economy"> Low-power mode (20 FPS, lower canvas resolution)</label>
+      </div>
+
+      <div class="group">
+        <span class="control-title">Live readings</span>
+        <div class="stats" aria-live="polite" aria-atomic="false">
+          <div class="stat"><div class="k">Relative absorption</div><div id="absVal" class="v">0%</div></div>
+          <div class="stat"><div class="k">Transmitted amplitude</div><div id="outVal" class="v">0.00</div></div>
+          <div class="stat"><div class="k">Incident amplitude</div><div class="v">0.75</div></div>
+          <div class="stat"><div class="k">Vibration magnitude</div><div id="vibVal" class="v">0%</div></div>
+        </div>
+        <div id="status" class="status" role="status">Move the wavelength slider onto a peak to increase absorption.</div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="lesson" aria-label="How to interpret the model">
+    <div class="lesson-item"><strong>1 · Select the material</strong>Compare the illustrative positions and shapes of absorption bands in water, PE and PP.</div>
+    <div class="lesson-item"><strong>2 · Scan the wavelength</strong>Move the slider along the spectrum. Absorption is low between bands and rises near absorption peaks.</div>
+    <div class="lesson-item"><strong>3 · Observe the response</strong>Higher absorption increases the displayed vibrational displacement and decreases the transmitted-wave amplitude.</div>
+  </section>
+
+  <p class="footer">Teaching model: spatial wave spacing is deliberately rescaled for visibility; wavelength is displayed in nm. The absorption–amplitude relationship and two-body vibration are schematic rather than a quantitative electromagnetic/quantum-mechanical simulation. Runs entirely in your browser without external libraries.</p>
+</main>
+<script>
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const scene = $("scene"), spec = $("spectrum");
+  const ctx = scene.getContext("2d", {alpha:false});
+  const sctx = spec.getContext("2d", {alpha:false});
+  const TAU = 2 * Math.PI;
+  const W = 1100, H = 470, SW = 900, SH = 290;
+  const A0 = 0.75;
+  const RED = "#ff685a", PEACH = "#ffbea1";
+  const models = {
+    Water: {
+      short:"H₂O", colors:["#43a5ef", "#90caf9"],
+      description:"Water (H₂O) · strong illustrative absorption near 1450 and 1940 nm.",
+      peaks:[[970,45,.30],[1450,80,.75],[1940,100,.88]]
+    },
+    Polyethylene: {
+      short:"PE", colors:["#f0f2f6", "#66bb6a"],
+      description:"Polyethylene (PE) · illustrative absorption features associated with C–H vibrations.",
+      peaks:[[1210,65,.24],[1390,70,.16],[1720,80,.48],[1760,70,.32],[2310,100,.67]]
+    },
+    Polypropylene: {
+      short:"PP", colors:["#f0f2f6", "#ef5350"],
+      description:"Polypropylene (PP) · illustrative absorption features with a different band pattern from PE.",
+      peaks:[[1180,60,.22],[1400,70,.20],[1700,80,.38],[1760,75,.50],[2270,100,.62]]
+    }
+  };
+  const state = {
+    material:"Water", wavelength:1450, emitter:true,
+    paused:window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    economy:false, speed:1, phase:0
+  };
+
+  // Sample the three fixed illustrative curves once. Spectrum drawing is
+  // event-driven; it is NOT repainted in the 30 FPS animation loop.
+  const grid = Array.from({length:701},(_,i)=>800+i*(1700/700));
+  const absorption = (nm, material=state.material) => {
+    let total=.03;
+    for (const [center,width,weight] of models[material].peaks) {
+      const z=(nm-center)/width;
+      total += weight * Math.exp(-.5*z*z);
+    }
+    return Math.max(0,Math.min(.92,total));
+  };
+  const curves = Object.fromEntries(Object.keys(models).map(k=>[
+    k, Float32Array.from(grid,nm=>absorption(nm,k))
+  ]));
+  const displayWavelength = nm => 62+(nm-800)/1700*122;
+  const transmission = a => A0*(1-a);  // Intentionally schematic.
+
+  function resizeCanvas(canvas,context,logicalW,logicalH) {
+    const maxDpr = state.economy ? 1 : 1.5;
+    const cssW = canvas.getBoundingClientRect().width;
+    const cssH = canvas.getBoundingClientRect().height;
+    const dpr = Math.min(window.devicePixelRatio||1,maxDpr);
+    const cw=Math.max(1,Math.round(cssW*dpr));
+    const ch=Math.max(1,Math.round(cssH*dpr));
+    if (canvas.width!==cw || canvas.height!==ch) {
+      canvas.width=cw;canvas.height=ch;
+    }
+    context.setTransform(cw/logicalW,0,0,ch/logicalH,0,0);
+  }
+
+  // Static scene background, cached in a tiny off-screen canvas so it is not
+  // reconstructed every frame on older CPUs or integrated graphics.
+  const background = document.createElement("canvas");
+  background.width=W; background.height=H;
+  const bg=background.getContext("2d",{alpha:false});
+  function makeBackground() {
+    bg.fillStyle="#101823";bg.fillRect(0,0,W,H);
+    bg.strokeStyle="rgba(155,186,215,.07)";bg.lineWidth=1;
+    for(let x=0;x<=W;x+=55) {bg.beginPath();bg.moveTo(x,0);bg.lineTo(x,H);bg.stroke()}
+    for(let y=0;y<=H;y+=55) {bg.beginPath();bg.moveTo(0,y);bg.lineTo(W,y);bg.stroke()}
+    bg.strokeStyle="#415267";bg.lineWidth=1;bg.setLineDash([7,9]);
+    bg.beginPath();bg.moveTo(125,238);bg.lineTo(1070,238);bg.stroke();bg.setLineDash([]);
+    bg.fillStyle="#293748";roundedRect(bg,30,163,94,150,11);bg.fill();
+    bg.strokeStyle="#7993ac";bg.lineWidth=2;bg.stroke();
+    bg.fillStyle="#182434";roundedRect(bg,80,194,48,88,9);bg.fill();
+    bg.fillStyle="#c9d8e8";bg.font="600 17px system-ui";bg.textAlign="center";
+    bg.fillText("NIR",77,227);bg.fillText("source",77,252);
+    bg.fillStyle="#a8b8c9";bg.font="15px system-ui";
+    bg.fillText("Emitter",79,353);
+    bg.textAlign="left";bg.font="600 15px system-ui";bg.fillStyle=RED;
+    bg.fillText("INCIDENT",225,83);
+    bg.fillStyle=PEACH;bg.fillText("TRANSMITTED",882,83);
+  }
+  function roundedRect(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r)}
+  makeBackground();
+
+  function drawWave(x1,x2,amp,k,phase,color) {
+    const length=x2-x1;
+    if (length<=0) return;
+    const samples=Math.max(64,Math.ceil(length/2.7));
+    ctx.beginPath();
+    for (let i=0;i<=samples;i++) {
+      const x=x1+length*i/samples;
+      const y=238-amp*Math.sin(k*(x-132)-phase);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle=color;ctx.lineWidth=4;ctx.lineCap="round";ctx.stroke();
+  }
+  function atom(x,color) {
+    const r=29;
+    const grad=ctx.createRadialGradient(x-9,228,3,x,238,r);
+    grad.addColorStop(0,"#ffffff");grad.addColorStop(.14,color);
+    grad.addColorStop(1,color);
+    ctx.fillStyle=grad;ctx.strokeStyle="#e5edf6";ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x,238,r,0,TAU);ctx.fill();ctx.stroke();
+  }
+  function spring(x1,x2) {
+    const N=44, h=13;
+    ctx.beginPath();ctx.moveTo(x1,238);
+    for(let i=1;i<N;i++) {
+      const t=i/N;
+      ctx.lineTo(x1+t*(x2-x1),238+Math.sin(t*12*TAU)*h);
+    }
+    ctx.lineTo(x2,238);ctx.strokeStyle="#dce4ee";ctx.lineWidth=2.6;ctx.stroke();
+  }
+  function drawScene() {
+    ctx.drawImage(background,0,0);
+    const a=absorption(state.wavelength);
+    const lambdaPx=displayWavelength(state.wavelength);
+    const k=TAU/lambdaPx;
+    const phase=state.phase;
+    const vibration = state.emitter ? 17*a*Math.sin(phase*1.1) : 0;
+    const left=650+vibration, right=810-vibration;
+
+    // The emitter aperture remains visible even when switched off.
+    ctx.beginPath();ctx.arc(131,238,14,0,TAU);
+    ctx.fillStyle=state.emitter?"#ff5a3c":"#566273";
+    ctx.shadowBlur=state.emitter?18:0;ctx.shadowColor="#f85439";ctx.fill();ctx.shadowBlur=0;
+
+    if(state.emitter) {
+      drawWave(143,left-39,69,k,phase,RED);
+      drawWave(right+39,W-16,69*(1-a),k,phase,PEACH);
+    }
+    spring(left+29,right-29);
+    atom(left,models[state.material].colors[0]);
+    atom(right,models[state.material].colors[1]);
+
+    ctx.textAlign="center";ctx.fillStyle="#f0f5fb";
+    ctx.font="700 23px system-ui";ctx.fillText(models[state.material].short,730,138);
+    ctx.font="16px system-ui";ctx.fillStyle="#b7c7d8";
+    ctx.fillText(state.material,730,359);
+    ctx.font="13px system-ui";ctx.fillText("Simplified vibrational mode",730,381);
+
+    // One visual period is marked; the scale is not molecular/optical scale.
+    const x=238,y=390;
+    ctx.strokeStyle="#d6e6f5";ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(x,y-10);ctx.lineTo(x,y);
+    ctx.lineTo(x+lambdaPx,y);ctx.lineTo(x+lambdaPx,y-10);ctx.stroke();
+    ctx.fillStyle="#dce9f6";ctx.textAlign="center";
+    ctx.font="14px system-ui";
+    ctx.fillText(`λ = ${state.wavelength} nm`,x+lambdaPx/2,y+24);
+    ctx.font="13px system-ui";ctx.fillStyle="#aab9ca";
+    ctx.textAlign="left";ctx.fillText(`A₀ = ${A0.toFixed(2)}`,226,111);
+    ctx.textAlign="right";ctx.fillText(`A = ${transmission(a).toFixed(2)}`,1055,111);
+
+    if(!state.emitter) {
+      ctx.textAlign="center";ctx.fillStyle="#abb8c7";
+      ctx.font="600 16px system-ui";ctx.fillText("EMITTER OFF",525,46);
+    } else if (state.paused) {
+      ctx.textAlign="center";ctx.fillStyle="#abb8c7";
+      ctx.font="600 16px system-ui";ctx.fillText("MOTION PAUSED",525,46);
+    }
+  }
+
+  function drawSpectrum() {
+    sctx.fillStyle="#101823";sctx.fillRect(0,0,SW,SH);
+    const m={l:68,r:22,t:32,b:49}, pw=SW-m.l-m.r, ph=SH-m.t-m.b;
+    const xp=nm=>m.l+(nm-800)/1700*pw;
+    const yp=a=>m.t+(1-a)*ph;
+    sctx.strokeStyle="#324356";sctx.lineWidth=1;sctx.font="13px system-ui";
+    sctx.fillStyle="#acbbc9";sctx.textAlign="center";
+    for(const nm of [800,1100,1400,1700,2000,2300,2500]) {
+      const x=xp(nm);sctx.beginPath();sctx.moveTo(x,m.t);sctx.lineTo(x,m.t+ph);sctx.stroke();
+      sctx.fillText(String(nm),x,SH-23);
+    }
+    sctx.textAlign="right";
+    for(const a of [0,.25,.5,.75,1]) {
+      const y=yp(a);sctx.beginPath();sctx.moveTo(m.l,y);sctx.lineTo(m.l+pw,y);sctx.stroke();
+      sctx.fillText(a.toFixed(2),m.l-9,y+5);
+    }
+    sctx.fillStyle="#dce6f3";sctx.textAlign="center";
+    sctx.font="14px system-ui";sctx.fillText("Wavelength [nm]",SW/2,SH-5);
+    sctx.save();sctx.translate(17,SH/2);sctx.rotate(-Math.PI/2);
+    sctx.fillText("Relative absorption",0,0);sctx.restore();
+    const curve=curves[state.material];
+    sctx.beginPath();
+    for(let i=0;i<grid.length;i++) {
+      const x=xp(grid[i]),y=yp(curve[i]);
+      if(i===0)sctx.moveTo(x,y);else sctx.lineTo(x,y);
+    }
+    sctx.strokeStyle="#ff7768";sctx.lineWidth=3.2;sctx.lineJoin="round";sctx.stroke();
+    const cx=xp(state.wavelength),cy=yp(absorption(state.wavelength));
+    sctx.strokeStyle="#e8f2fc";sctx.lineWidth=1.5;
+    sctx.setLineDash([6,6]);sctx.beginPath();sctx.moveTo(cx,m.t);sctx.lineTo(cx,m.t+ph);sctx.stroke();sctx.setLineDash([]);
+    sctx.fillStyle="#ffffff";sctx.beginPath();sctx.arc(cx,cy,6,0,TAU);sctx.fill();
+    sctx.fillStyle="#c1cede";sctx.font="12px system-ui";sctx.textAlign="right";
+    sctx.fillText(`${state.material} · illustrative spectrum`,SW-25,19);
+  }
+
+  function updateReadings() {
+    const a=absorption(state.wavelength);
+    $("wavelengthVal").textContent=`${state.wavelength} nm`;
+    $("speedVal").textContent=`${state.speed.toFixed(2).replace(/0$/,"")}×`;
+    $("absVal").textContent=`${(a*100).toFixed(0)}%`;
+    $("outVal").textContent=transmission(a).toFixed(2);
+    $("vibVal").textContent=`${(a*100).toFixed(0)}%`;
+    $("materialDesc").textContent=models[state.material].description;
+    $("emitterBtn").textContent=`Emitter: ${state.emitter?"ON":"OFF"}`;
+    $("emitterBtn").setAttribute("aria-pressed",String(state.emitter));
+    $("pauseBtn").textContent=state.paused?"Resume motion":"Pause motion";
+    $("pauseBtn").setAttribute("aria-pressed",String(state.paused));
+    const status=!state.emitter
+      ? "Emitter deactivated. The incident wave, transmitted wave and driven vibration stop."
+      : a>.5
+        ? "Strong absorption band: greater vibrational displacement and a smaller transmitted amplitude."
+        : "Weak absorption: the transmitted amplitude remains close to the incident amplitude.";
+    $("status").textContent=status;
+    for(const btn of document.querySelectorAll(".material-btn")) {
+      btn.setAttribute("aria-pressed",String(btn.dataset.material===state.material));
+    }
+  }
+
+  function rerender() {updateReadings();drawScene();drawSpectrum()}
+  for(const btn of document.querySelectorAll(".material-btn")) {
+    btn.addEventListener("click",()=>{state.material=btn.dataset.material;rerender()});
+  }
+  $("wavelength").addEventListener("input",e=>{state.wavelength=Number(e.target.value);rerender()});
+  $("speed").addEventListener("input",e=>{state.speed=Number(e.target.value);updateReadings()});
+  $("emitterBtn").addEventListener("click",()=>{state.emitter=!state.emitter;rerender()});
+  $("pauseBtn").addEventListener("click",()=>{state.paused=!state.paused;rerender()});
+  $("resetBtn").addEventListener("click",()=>{
+    state.material="Water";state.wavelength=1450;state.speed=1;state.emitter=true;state.paused=false;state.phase=0;
+    $("wavelength").value=String(state.wavelength);$("speed").value=String(state.speed);
+    rerender();
+  });
+  $("economy").addEventListener("change",e=>{
+    state.economy=e.target.checked;
+    resizeCanvas(scene,ctx,W,H);resizeCanvas(spec,sctx,SW,SH);
+    rerender();
+  });
+
+  // ResizeObserver is cheaper than polling dimensions in the animation loop.
+  let resizePending=false;
+  const ro=new ResizeObserver(()=>{
+    if(resizePending)return;
+    resizePending=true;
+    requestAnimationFrame(()=>{
+      resizePending=false;
+      resizeCanvas(scene,ctx,W,H);resizeCanvas(spec,sctx,SW,SH);rerender();
+    });
+  });
+  ro.observe(scene);ro.observe(spec);
+  resizeCanvas(scene,ctx,W,H);resizeCanvas(spec,sctx,SW,SH);rerender();
+
+  let lastDraw=0;
+  function frame(timestamp) {
+    requestAnimationFrame(frame);
+    if(document.hidden || state.paused) {lastDraw=timestamp;return}
+    const fps=state.economy?20:30;
+    const minFrame=1000/fps;
+    if(timestamp-lastDraw<minFrame)return;
+    const dt=lastDraw?Math.min((timestamp-lastDraw)/1000,.08):minFrame/1000;
+    lastDraw=timestamp;
+    if(state.emitter) state.phase+=dt*5.8*state.speed;
+    drawScene();
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
