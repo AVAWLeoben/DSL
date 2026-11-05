@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Interactive teaching demonstration of wavelength-dependent NIR absorption, molecular vibration, and transmitted-wave attenuation in water, PE, and PP.">
-<title>NIR Absorption &amp; Molecular Vibration · Interactive Labs</title>
+<meta name="description" content="Interactive teaching tool using supplied 220-band PE, PP and PET spectral measurements with a schematic molecular vibration and transmission model.">
+<title>NIR Spectral Response &amp; Molecular Vibration · Interactive Labs</title>
 <style>
 :root {
   color-scheme:dark;
@@ -72,8 +72,8 @@ input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; ma
 <body>
 <main class="wrap">
   <a class="back" href="index.html" aria-label="Back to exercise overview">← All exercises</a>
-  <h1>NIR Absorption &amp; Molecular Vibration</h1>
-  <p class="sub">Explore how changing the near-infrared wavelength changes the absorption spectrum, the vibration of a simplified molecular model, and the transmitted wave.</p>
+  <h1>NIR Spectral Response &amp; Molecular Vibration</h1>
+  <p class="sub">Compare measured 220-band PE, PP, and PET spectra and explore a schematic link between spectral response, bond vibration, and transmitted NIR light.</p>
 
   <div class="layout">
     <div class="stack">
@@ -88,9 +88,9 @@ input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; ma
       </section>
 
       <section class="panel" aria-label="NIR absorption spectrum">
-        <h2>Wavelength-dependent absorption spectrum</h2>
-        <div class="canvas-shell"><canvas id="spectrum" width="900" height="290" aria-label="Illustrative NIR absorption spectrum with moving cursor at the selected wavelength" role="img"></canvas></div>
-        <p class="note">Spectra are illustrative Gaussian teaching models, not measured reference data. The two masses and spring symbolize an absorbing vibrational mode, not the actual molecular structure of water or a polymer chain.</p>
+        <h2>Recorded NIR spectrum · 220 bands</h2>
+        <div class="canvas-shell"><canvas id="spectrum" width="900" height="290" aria-label="Provided 220-band NIR signal for PE, PP or PET, with a live selected-band cursor" role="img"></canvas></div>
+        <p class="note"><strong>Source data:</strong> PE.xlsx (band-wise mean of 4 spectra), PP.xlsx (1 spectrum), PET.xlsx (1 spectrum). Values are plotted without spectral smoothing in the supplied signal units. The spreadsheets contain no wavelength calibration or signal-unit definition, so the horizontal axis is spectral band number, not nm. The molecular cartoon is schematic.</p>
       </section>
     </div>
 
@@ -98,16 +98,16 @@ input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; ma
       <h2>Simulation controls</h2>
       <span class="control-title">Choose a material</span>
       <div class="materials" role="group" aria-label="Choose a material">
-        <button type="button" class="material-btn" data-material="Water" aria-pressed="true">Water</button>
-        <button type="button" class="material-btn" data-material="Polyethylene" aria-pressed="false">PE</button>
-        <button type="button" class="material-btn" data-material="Polypropylene" aria-pressed="false">PP</button>
+        <button type="button" class="material-btn" data-material="PE" aria-pressed="false">PE</button>
+        <button type="button" class="material-btn" data-material="PP" aria-pressed="true">PP</button>
+        <button type="button" class="material-btn" data-material="PET" aria-pressed="false">PET</button>
       </div>
-      <p id="materialDesc" class="note">Water (H₂O) · strong illustrative absorption near 1450 and 1940 nm.</p>
+      <p id="materialDesc" class="note">PP · one supplied spectrum, 220 bands.</p>
 
       <div class="group">
-        <label class="range-heading" for="wavelength"><span>Wavelength</span><output class="readout" id="wavelengthVal" for="wavelength">1450 nm</output></label>
-        <input id="wavelength" type="range" min="800" max="2500" step="5" value="1450">
-        <div class="scale"><span>800 nm</span><span>2500 nm</span></div>
+        <label class="range-heading" for="wavelength"><span>Spectral band</span><output class="readout" id="wavelengthVal" for="wavelength">125 / 220</output></label>
+        <input id="wavelength" type="range" min="1" max="220" step="1" value="125">
+        <div class="scale"><span>Band 1</span><span>Band 220</span></div>
       </div>
 
       <div class="group">
@@ -125,23 +125,25 @@ input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; ma
       <div class="group">
         <span class="control-title">Live readings</span>
         <div class="stats" aria-live="polite" aria-atomic="false">
-          <div class="stat"><div class="k">Relative absorption</div><div id="absVal" class="v">0%</div></div>
+          <div class="stat"><div class="k">Recorded signal</div><div id="signalVal" class="v">—</div></div>
+          <div class="stat"><div class="k">Attenuation proxy</div><div id="absVal" class="v">0%</div></div>
           <div class="stat"><div class="k">Transmitted amplitude</div><div id="outVal" class="v">0.00</div></div>
           <div class="stat"><div class="k">Incident amplitude</div><div class="v">0.75</div></div>
-          <div class="stat"><div class="k">Vibration magnitude</div><div id="vibVal" class="v">0%</div></div>
+          <div class="stat"><div class="k">Vibration scale</div><div id="vibVal" class="v">0%</div></div>
+          <div class="stat"><div class="k">Data samples</div><div id="samplesVal" class="v">1</div></div>
         </div>
-        <div id="status" class="status" role="status">Move the wavelength slider onto a peak to increase absorption.</div>
+        <div id="status" class="status" role="status">Move the cursor across the recorded spectrum to investigate changes in the schematic response.</div>
       </div>
     </aside>
   </div>
 
   <section class="lesson" aria-label="How to interpret the model">
-    <div class="lesson-item"><strong>1 · Select the material</strong>Compare the illustrative positions and shapes of absorption bands in water, PE and PP.</div>
-    <div class="lesson-item"><strong>2 · Scan the wavelength</strong>Move the slider along the spectrum. Absorption is low between bands and rises near absorption peaks.</div>
-    <div class="lesson-item"><strong>3 · Observe the response</strong>Higher absorption increases the displayed vibrational displacement and decreases the transmitted-wave amplitude.</div>
+    <div class="lesson-item"><strong>1 · Select the material</strong>Compare the supplied PE mean spectrum with the single PP and PET spectra.</div>
+    <div class="lesson-item"><strong>2 · Scan the bands</strong>Move the slider across all 220 recorded channels and observe the signal profile and selected-band value.</div>
+    <div class="lesson-item"><strong>3 · Interpret carefully</strong>The animation uses a scaled inverse-signal proxy for vibration and wave attenuation. It does not infer quantitative absorbance from uncalibrated signals.</div>
   </section>
 
-  <p class="footer">Teaching model: spatial wave spacing is deliberately rescaled for visibility; wavelength is displayed in nm. The absorption–amplitude relationship and two-body vibration are schematic rather than a quantitative electromagnetic/quantum-mechanical simulation. Runs entirely in your browser without external libraries.</p>
+  <p class="footer">Teaching model: the actual measurement values are shown on the spectral plot. Wave spacing, the attenuation proxy, and the two-body vibration are schematic. The source spreadsheets provide no wavelength-to-band calibration, dark/white reference, or signal-unit documentation. Runs entirely in your browser without external libraries.</p>
 </main>
 <script>
 (() => {
@@ -151,209 +153,201 @@ input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; ma
   const scene = $("scene"), spec = $("spectrum");
   const ctx = scene.getContext("2d", {alpha:false});
   const sctx = spec.getContext("2d", {alpha:false});
-  const TAU = 2 * Math.PI;
-  const W = 1100, H = 470, SW = 900, SH = 290;
-  const A0 = 0.75;
-  const RED = "#ff685a", PEACH = "#ffbea1";
+  const TAU = 2*Math.PI, W=1100, H=470, SW=900, SH=290;
+  const A0=.75, RED="#ff685a", PEACH="#ffbea1";
+
+  // Actual measurements extracted directly from the uploaded spreadsheets.
+  // PE is the arithmetic mean of four rows, PP and PET are single rows.
+  // All 220 band values are preserved, without smoothing or fabricated peaks.
+  const MEASURED = {"PE":[1036.25,1032.5,1026.75,1019.0,1011.75,1004.5,997.75,992.0,986.75,981.5,976.25,971.5,966.5,960.75,955.5,952.0,952.25,955.25,958.5,962.5,966.75,970.75,974.0,976.25,977.75,978.75,980.0,981.0,982.25,983.75,986.0,988.25,989.25,989.0,987.75,985.5,984.0,982.5,981.25,980.0,978.0,975.0,970.5,965.0,958.0,948.75,936.0,919.5,899.25,877.0,852.75,825.75,795.25,762.0,729.75,701.75,680.5,664.0,647.0,626.75,604.25,579.75,555.0,530.0,503.5,476.0,447.75,420.0,397.0,380.5,372.25,374.0,387.0,410.75,442.75,478.5,514.75,549.0,580.0,607.25,631.75,653.25,672.0,688.75,702.75,715.25,726.5,735.5,743.75,750.0,755.5,759.25,762.75,765.75,768.75,770.75,773.0,775.0,777.0,779.25,781.75,784.25,787.5,790.5,792.75,794.5,795.5,795.75,796.5,796.25,795.25,792.75,789.0,784.75,779.25,772.5,764.0,753.5,740.0,724.0,703.75,679.75,652.75,623.5,592.0,557.25,522.25,490.5,468.5,461.0,464.5,472.0,475.75,471.5,461.25,450.75,443.75,441.5,443.5,447.0,450.75,454.5,459.25,465.0,472.75,482.0,491.75,501.25,510.75,520.0,528.75,538.0,548.0,559.0,570.75,582.0,592.25,601.25,608.25,614.75,620.5,627.0,632.5,637.5,641.5,643.5,645.25,645.0,643.75,641.5,638.75,635.5,632.5,628.5,624.5,620.5,618.0,619.25,624.5,633.25,643.0,651.25,657.25,661.5,666.0,669.75,673.0,675.75,677.75,679.0,679.75,680.25,680.25,680.0,679.75,679.0,678.0,676.75,675.0,672.75,670.0,667.75,664.75,661.5,657.75,653.5,649.5,645.5,641.75,637.75,634.25,630.0,625.0,619.75,613.25,605.75,597.25,586.75,576.75,569.25],"PP":[1359,1362,1361,1357,1352,1347,1342,1336,1330,1326,1325,1327,1330,1332,1334,1334,1330,1324,1319,1318,1320,1321,1323,1325,1327,1328,1327,1326,1325,1325,1326,1328,1329,1329,1328,1327,1326,1325,1322,1318,1313,1307,1300,1291,1278,1258,1232,1200,1164,1129,1098,1074,1056,1039,1017,991,962,931,898,863,827,794,767,749,740,738,739,740,740,741,744,753,768,791,820,851,882,912,941,967,990,1009,1027,1042,1055,1067,1077,1086,1093,1099,1105,1110,1113,1115,1116,1117,1118,1119,1120,1121,1121,1121,1122,1122,1122,1120,1119,1116,1114,1110,1106,1100,1092,1077,1053,1019,974,926,881,843,813,788,764,741,719,699,681,665,654,649,651,660,671,680,684,687,690,696,703,710,715,719,723,729,735,743,751,760,768,776,784,791,798,806,813,819,825,830,833,836,841,848,858,870,881,891,899,905,911,917,924,931,938,945,951,955,958,959,959,959,959,959,957,955,953,950,946,942,938,934,930,925,919,913,906,900,894,889,882,875,867,857,844,830,814,800,786,776,769,764,762,761,760,757,754,750,747,743,739,736],"PET":[517,518,520,522,524,524,521,517,516,517,518,519,518,518,519,520,520,521,521,522,521,522,523,524,525,524,522,521,521,522,525,527,529,530,529,527,525,524,523,522,521,521,521,521,520,519,518,517,515,514,515,517,519,520,520,519,517,515,514,515,516,516,516,515,515,515,516,516,515,514,514,513,512,511,511,510,510,510,510,510,509,509,509,509,509,508,508,508,507,506,504,503,504,504,504,503,502,501,501,500,499,500,500,501,500,499,497,497,497,497,497,497,497,497,495,494,493,493,494,495,496,496,495,494,493,492,491,491,491,491,492,492,492,492,491,490,489,489,489,489,488,488,489,489,488,488,489,489,489,489,489,488,487,486,485,486,487,488,489,490,491,491,490,490,490,490,491,491,490,489,489,489,489,489,490,490,490,489,488,488,488,489,489,489,489,490,490,490,489,488,487,486,486,487,487,488,487,487,488,488,487,487,487,486,486,485,483,482,479,476,470,463,454,447,441,437,438,441,444,446]};
+
   const models = {
-    Water: {
-      short:"H₂O", colors:["#43a5ef", "#90caf9"],
-      description:"Water (H₂O) · strong illustrative absorption near 1450 and 1940 nm.",
-      peaks:[[970,45,.30],[1450,80,.75],[1940,100,.88]]
+    PE: {
+      short:"PE", colors:["#f0f2f6", "#66bb6a"], samples:4,
+      description:"Polyethylene (PE) · arithmetic mean of 4 supplied spectra (PE.xlsx)."
     },
-    Polyethylene: {
-      short:"PE", colors:["#f0f2f6", "#66bb6a"],
-      description:"Polyethylene (PE) · illustrative absorption features associated with C–H vibrations.",
-      peaks:[[1210,65,.24],[1390,70,.16],[1720,80,.48],[1760,70,.32],[2310,100,.67]]
+    PP: {
+      short:"PP", colors:["#f0f2f6", "#ef5350"], samples:1,
+      description:"Polypropylene (PP) · one supplied spectrum (PP.xlsx)."
     },
-    Polypropylene: {
-      short:"PP", colors:["#f0f2f6", "#ef5350"],
-      description:"Polypropylene (PP) · illustrative absorption features with a different band pattern from PE.",
-      peaks:[[1180,60,.22],[1400,70,.20],[1700,80,.38],[1760,75,.50],[2270,100,.62]]
+    PET: {
+      short:"PET", colors:["#d0e9ff", "#6c9cff"], samples:1,
+      description:"Polyethylene terephthalate (PET) · one supplied spectrum (PET.xlsx)."
     }
   };
+  const extrema=Object.fromEntries(Object.keys(MEASURED).map(mat=>[
+    mat,{min:Math.min(...MEASURED[mat]),max:Math.max(...MEASURED[mat])}
+  ]));
   const state = {
-    material:"Water", wavelength:1450, emitter:true,
+    material:"PP", band:125, emitter:true,
     paused:window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     economy:false, speed:1, phase:0
   };
 
-  // Sample the three fixed illustrative curves once. Spectrum drawing is
-  // event-driven; it is NOT repainted in the 30 FPS animation loop.
-  const grid = Array.from({length:701},(_,i)=>800+i*(1700/700));
-  const absorption = (nm, material=state.material) => {
-    let total=.03;
-    for (const [center,width,weight] of models[material].peaks) {
-      const z=(nm-center)/width;
-      total += weight * Math.exp(-.5*z*z);
-    }
-    return Math.max(0,Math.min(.92,total));
-  };
-  const curves = Object.fromEntries(Object.keys(models).map(k=>[
-    k, Float32Array.from(grid,nm=>absorption(nm,k))
-  ]));
-  const displayWavelength = nm => 62+(nm-800)/1700*122;
-  const transmission = a => A0*(1-a);  // Intentionally schematic.
+  // The uploaded workbooks contain neither wavelength calibration nor the
+  // measurement type (counts, reflectance, absorbance etc.). Treat raw values
+  // as recorded signal in unspecified units. For an engaging wave/molecule
+  // animation ONLY, invert each material's min/max-scaled signal to obtain
+  // a qualitative 'attenuation proxy'. This is not measured absorbance.
+  function measuredSignal(band=state.band,mat=state.material) {
+    return MEASURED[mat][Math.max(0,Math.min(219,Math.round(band)-1))];
+  }
+  function responseProxy(band=state.band,mat=state.material) {
+    const {min,max}=extrema[mat];
+    const scaled=(max-measuredSignal(band,mat))/Math.max(1e-9,max-min);
+    return .08+.80*scaled;
+  }
+  const displayPeriod = band => 62+(band-1)/219*122;
+  const transmission = response => A0*(1-response); // Schematic only.
 
   function resizeCanvas(canvas,context,logicalW,logicalH) {
-    const maxDpr = state.economy ? 1 : 1.5;
-    const cssW = canvas.getBoundingClientRect().width;
-    const cssH = canvas.getBoundingClientRect().height;
-    const dpr = Math.min(window.devicePixelRatio||1,maxDpr);
-    const cw=Math.max(1,Math.round(cssW*dpr));
-    const ch=Math.max(1,Math.round(cssH*dpr));
-    if (canvas.width!==cw || canvas.height!==ch) {
-      canvas.width=cw;canvas.height=ch;
-    }
+    const maxDpr=state.economy?1:1.5;
+    const rect=canvas.getBoundingClientRect();
+    const dpr=Math.min(window.devicePixelRatio||1,maxDpr);
+    const cw=Math.max(1,Math.round(rect.width*dpr));
+    const ch=Math.max(1,Math.round(rect.height*dpr));
+    if(canvas.width!==cw || canvas.height!==ch){canvas.width=cw;canvas.height=ch}
     context.setTransform(cw/logicalW,0,0,ch/logicalH,0,0);
   }
 
-  // Static scene background, cached in a tiny off-screen canvas so it is not
-  // reconstructed every frame on older CPUs or integrated graphics.
-  const background = document.createElement("canvas");
-  background.width=W; background.height=H;
+  // Static background is cached to reduce CPU work on lower-powered laptops.
+  const background=document.createElement("canvas");
+  background.width=W;background.height=H;
   const bg=background.getContext("2d",{alpha:false});
-  function makeBackground() {
+  function roundedRect(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r)}
+  function makeBackground(){
     bg.fillStyle="#101823";bg.fillRect(0,0,W,H);
     bg.strokeStyle="rgba(155,186,215,.07)";bg.lineWidth=1;
-    for(let x=0;x<=W;x+=55) {bg.beginPath();bg.moveTo(x,0);bg.lineTo(x,H);bg.stroke()}
-    for(let y=0;y<=H;y+=55) {bg.beginPath();bg.moveTo(0,y);bg.lineTo(W,y);bg.stroke()}
-    bg.strokeStyle="#415267";bg.lineWidth=1;bg.setLineDash([7,9]);
+    for(let x=0;x<=W;x+=55){bg.beginPath();bg.moveTo(x,0);bg.lineTo(x,H);bg.stroke()}
+    for(let y=0;y<=H;y+=55){bg.beginPath();bg.moveTo(0,y);bg.lineTo(W,y);bg.stroke()}
+    bg.strokeStyle="#415267";bg.setLineDash([7,9]);
     bg.beginPath();bg.moveTo(125,238);bg.lineTo(1070,238);bg.stroke();bg.setLineDash([]);
     bg.fillStyle="#293748";roundedRect(bg,30,163,94,150,11);bg.fill();
     bg.strokeStyle="#7993ac";bg.lineWidth=2;bg.stroke();
     bg.fillStyle="#182434";roundedRect(bg,80,194,48,88,9);bg.fill();
     bg.fillStyle="#c9d8e8";bg.font="600 17px system-ui";bg.textAlign="center";
     bg.fillText("NIR",77,227);bg.fillText("source",77,252);
-    bg.fillStyle="#a8b8c9";bg.font="15px system-ui";
-    bg.fillText("Emitter",79,353);
-    bg.textAlign="left";bg.font="600 15px system-ui";bg.fillStyle=RED;
-    bg.fillText("INCIDENT",225,83);
+    bg.fillStyle="#a8b8c9";bg.font="15px system-ui";bg.fillText("Emitter",79,353);
+    bg.textAlign="left";bg.font="600 15px system-ui";
+    bg.fillStyle=RED;bg.fillText("INCIDENT",225,83);
     bg.fillStyle=PEACH;bg.fillText("TRANSMITTED",882,83);
   }
-  function roundedRect(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r)}
   makeBackground();
 
-  function drawWave(x1,x2,amp,k,phase,color) {
+  function drawWave(x1,x2,amp,k,phase,color){
     const length=x2-x1;
-    if (length<=0) return;
+    if(length<=0)return;
     const samples=Math.max(64,Math.ceil(length/2.7));
     ctx.beginPath();
-    for (let i=0;i<=samples;i++) {
+    for(let i=0;i<=samples;i++){
       const x=x1+length*i/samples;
       const y=238-amp*Math.sin(k*(x-132)-phase);
-      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
     ctx.strokeStyle=color;ctx.lineWidth=4;ctx.lineCap="round";ctx.stroke();
   }
-  function atom(x,color) {
-    const r=29;
-    const grad=ctx.createRadialGradient(x-9,228,3,x,238,r);
-    grad.addColorStop(0,"#ffffff");grad.addColorStop(.14,color);
-    grad.addColorStop(1,color);
+  function atom(x,color){
+    const r=29,grad=ctx.createRadialGradient(x-9,228,3,x,238,r);
+    grad.addColorStop(0,"#ffffff");grad.addColorStop(.14,color);grad.addColorStop(1,color);
     ctx.fillStyle=grad;ctx.strokeStyle="#e5edf6";ctx.lineWidth=2;
     ctx.beginPath();ctx.arc(x,238,r,0,TAU);ctx.fill();ctx.stroke();
   }
-  function spring(x1,x2) {
-    const N=44, h=13;
-    ctx.beginPath();ctx.moveTo(x1,238);
-    for(let i=1;i<N;i++) {
+  function spring(x1,x2){
+    const N=44,h=13;ctx.beginPath();ctx.moveTo(x1,238);
+    for(let i=1;i<N;i++){
       const t=i/N;
       ctx.lineTo(x1+t*(x2-x1),238+Math.sin(t*12*TAU)*h);
     }
     ctx.lineTo(x2,238);ctx.strokeStyle="#dce4ee";ctx.lineWidth=2.6;ctx.stroke();
   }
-  function drawScene() {
+  function drawScene(){
     ctx.drawImage(background,0,0);
-    const a=absorption(state.wavelength);
-    const lambdaPx=displayWavelength(state.wavelength);
-    const k=TAU/lambdaPx;
-    const phase=state.phase;
-    const vibration = state.emitter ? 17*a*Math.sin(phase*1.1) : 0;
-    const left=650+vibration, right=810-vibration;
-
-    // The emitter aperture remains visible even when switched off.
+    const response=responseProxy();
+    const period=displayPeriod(state.band);
+    const k=TAU/period,phase=state.phase;
+    const vibration=state.emitter?17*response*Math.sin(phase*1.1):0;
+    const left=650+vibration,right=810-vibration;
     ctx.beginPath();ctx.arc(131,238,14,0,TAU);
     ctx.fillStyle=state.emitter?"#ff5a3c":"#566273";
     ctx.shadowBlur=state.emitter?18:0;ctx.shadowColor="#f85439";ctx.fill();ctx.shadowBlur=0;
-
-    if(state.emitter) {
+    if(state.emitter){
       drawWave(143,left-39,69,k,phase,RED);
-      drawWave(right+39,W-16,69*(1-a),k,phase,PEACH);
+      drawWave(right+39,W-16,69*(1-response),k,phase,PEACH);
     }
     spring(left+29,right-29);
     atom(left,models[state.material].colors[0]);
     atom(right,models[state.material].colors[1]);
-
     ctx.textAlign="center";ctx.fillStyle="#f0f5fb";
     ctx.font="700 23px system-ui";ctx.fillText(models[state.material].short,730,138);
     ctx.font="16px system-ui";ctx.fillStyle="#b7c7d8";
     ctx.fillText(state.material,730,359);
     ctx.font="13px system-ui";ctx.fillText("Simplified vibrational mode",730,381);
-
-    // One visual period is marked; the scale is not molecular/optical scale.
+    // Bracket is a DISPLAY PERIOD, not a calibrated wavelength in nm.
     const x=238,y=390;
     ctx.strokeStyle="#d6e6f5";ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(x,y-10);ctx.lineTo(x,y);
-    ctx.lineTo(x+lambdaPx,y);ctx.lineTo(x+lambdaPx,y-10);ctx.stroke();
-    ctx.fillStyle="#dce9f6";ctx.textAlign="center";
-    ctx.font="14px system-ui";
-    ctx.fillText(`λ = ${state.wavelength} nm`,x+lambdaPx/2,y+24);
+    ctx.lineTo(x+period,y);ctx.lineTo(x+period,y-10);ctx.stroke();
+    ctx.fillStyle="#dce9f6";ctx.textAlign="center";ctx.font="14px system-ui";
+    ctx.fillText(`Band ${state.band}`,x+period/2,y+24);
     ctx.font="13px system-ui";ctx.fillStyle="#aab9ca";
     ctx.textAlign="left";ctx.fillText(`A₀ = ${A0.toFixed(2)}`,226,111);
-    ctx.textAlign="right";ctx.fillText(`A = ${transmission(a).toFixed(2)}`,1055,111);
-
-    if(!state.emitter) {
+    ctx.textAlign="right";ctx.fillText(`A = ${transmission(response).toFixed(2)}`,1055,111);
+    if(!state.emitter){
       ctx.textAlign="center";ctx.fillStyle="#abb8c7";
       ctx.font="600 16px system-ui";ctx.fillText("EMITTER OFF",525,46);
-    } else if (state.paused) {
+    }else if(state.paused){
       ctx.textAlign="center";ctx.fillStyle="#abb8c7";
       ctx.font="600 16px system-ui";ctx.fillText("MOTION PAUSED",525,46);
     }
   }
 
-  function drawSpectrum() {
+  function drawSpectrum(){
     sctx.fillStyle="#101823";sctx.fillRect(0,0,SW,SH);
-    const m={l:68,r:22,t:32,b:49}, pw=SW-m.l-m.r, ph=SH-m.t-m.b;
-    const xp=nm=>m.l+(nm-800)/1700*pw;
-    const yp=a=>m.t+(1-a)*ph;
-    sctx.strokeStyle="#324356";sctx.lineWidth=1;sctx.font="13px system-ui";
-    sctx.fillStyle="#acbbc9";sctx.textAlign="center";
-    for(const nm of [800,1100,1400,1700,2000,2300,2500]) {
-      const x=xp(nm);sctx.beginPath();sctx.moveTo(x,m.t);sctx.lineTo(x,m.t+ph);sctx.stroke();
-      sctx.fillText(String(nm),x,SH-23);
+    const m={l:82,r:25,t:34,b:49},pw=SW-m.l-m.r,ph=SH-m.t-m.b;
+    const raw=MEASURED[state.material], min=Math.min(...raw),max=Math.max(...raw);
+    const pad=Math.max(8,(max-min)*.07),low=min-pad,high=max+pad;
+    const xp=band=>m.l+(band-1)/219*pw;
+    const yp=value=>m.t+(high-value)/(high-low)*ph;
+    sctx.strokeStyle="#324356";sctx.lineWidth=1;
+    sctx.font="13px system-ui";sctx.fillStyle="#acbbc9";
+    sctx.textAlign="center";
+    for(const band of [1,40,80,120,160,200,220]){
+      const x=xp(band);sctx.beginPath();sctx.moveTo(x,m.t);sctx.lineTo(x,m.t+ph);sctx.stroke();
+      sctx.fillText(String(band),x,SH-23);
     }
     sctx.textAlign="right";
-    for(const a of [0,.25,.5,.75,1]) {
-      const y=yp(a);sctx.beginPath();sctx.moveTo(m.l,y);sctx.lineTo(m.l+pw,y);sctx.stroke();
-      sctx.fillText(a.toFixed(2),m.l-9,y+5);
+    for(let i=0;i<=4;i++){
+      const value=low+(high-low)*i/4,y=yp(value);
+      sctx.beginPath();sctx.moveTo(m.l,y);sctx.lineTo(m.l+pw,y);sctx.stroke();
+      sctx.fillText(value.toFixed(0),m.l-10,y+5);
     }
     sctx.fillStyle="#dce6f3";sctx.textAlign="center";
-    sctx.font="14px system-ui";sctx.fillText("Wavelength [nm]",SW/2,SH-5);
-    sctx.save();sctx.translate(17,SH/2);sctx.rotate(-Math.PI/2);
-    sctx.fillText("Relative absorption",0,0);sctx.restore();
-    const curve=curves[state.material];
+    sctx.font="14px system-ui";sctx.fillText("Spectral band (1–220)",SW/2,SH-5);
+    sctx.save();sctx.translate(19,SH/2);sctx.rotate(-Math.PI/2);
+    sctx.fillText("Recorded signal [a.u.]",0,0);sctx.restore();
     sctx.beginPath();
-    for(let i=0;i<grid.length;i++) {
-      const x=xp(grid[i]),y=yp(curve[i]);
+    for(let i=0;i<220;i++){
+      const x=xp(i+1),y=yp(raw[i]);
       if(i===0)sctx.moveTo(x,y);else sctx.lineTo(x,y);
     }
     sctx.strokeStyle="#ff7768";sctx.lineWidth=3.2;sctx.lineJoin="round";sctx.stroke();
-    const cx=xp(state.wavelength),cy=yp(absorption(state.wavelength));
+    const cx=xp(state.band),cy=yp(measuredSignal());
     sctx.strokeStyle="#e8f2fc";sctx.lineWidth=1.5;
     sctx.setLineDash([6,6]);sctx.beginPath();sctx.moveTo(cx,m.t);sctx.lineTo(cx,m.t+ph);sctx.stroke();sctx.setLineDash([]);
     sctx.fillStyle="#ffffff";sctx.beginPath();sctx.arc(cx,cy,6,0,TAU);sctx.fill();
     sctx.fillStyle="#c1cede";sctx.font="12px system-ui";sctx.textAlign="right";
-    sctx.fillText(`${state.material} · illustrative spectrum`,SW-25,19);
+    sctx.fillText(`${state.material} · ${models[state.material].samples===1?"1 spectrum":"mean of 4 spectra"}`,SW-25,19);
   }
 
-  function updateReadings() {
-    const a=absorption(state.wavelength);
-    $("wavelengthVal").textContent=`${state.wavelength} nm`;
+  function updateReadings(){
+    const a=responseProxy();
+    $("wavelengthVal").textContent=`${state.band} / 220`;
     $("speedVal").textContent=`${state.speed.toFixed(2).replace(/0$/,"")}×`;
+    $("signalVal").textContent=measuredSignal().toFixed(2).replace(/\.?0+$/,"");
     $("absVal").textContent=`${(a*100).toFixed(0)}%`;
     $("outVal").textContent=transmission(a).toFixed(2);
     $("vibVal").textContent=`${(a*100).toFixed(0)}%`;
+    $("samplesVal").textContent=models[state.material].samples;
     $("materialDesc").textContent=models[state.material].description;
     $("emitterBtn").textContent=`Emitter: ${state.emitter?"ON":"OFF"}`;
     $("emitterBtn").setAttribute("aria-pressed",String(state.emitter));
@@ -362,34 +356,31 @@ input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; ma
     const status=!state.emitter
       ? "Emitter deactivated. The incident wave, transmitted wave and driven vibration stop."
       : a>.5
-        ? "Strong absorption band: greater vibrational displacement and a smaller transmitted amplitude."
-        : "Weak absorption: the transmitted amplitude remains close to the incident amplitude.";
+        ? "Low signal within this material's range: a stronger schematic attenuation response is displayed. This is not measured absorbance."
+        : "Higher signal within this material's range: a weaker schematic attenuation response is displayed. This is not measured absorbance.";
     $("status").textContent=status;
-    for(const btn of document.querySelectorAll(".material-btn")) {
+    for(const btn of document.querySelectorAll(".material-btn")){
       btn.setAttribute("aria-pressed",String(btn.dataset.material===state.material));
     }
   }
-
-  function rerender() {updateReadings();drawScene();drawSpectrum()}
-  for(const btn of document.querySelectorAll(".material-btn")) {
+  function rerender(){updateReadings();drawScene();drawSpectrum()}
+  for(const btn of document.querySelectorAll(".material-btn")){
     btn.addEventListener("click",()=>{state.material=btn.dataset.material;rerender()});
   }
-  $("wavelength").addEventListener("input",e=>{state.wavelength=Number(e.target.value);rerender()});
+  $("wavelength").addEventListener("input",e=>{state.band=Number(e.target.value);rerender()});
   $("speed").addEventListener("input",e=>{state.speed=Number(e.target.value);updateReadings()});
   $("emitterBtn").addEventListener("click",()=>{state.emitter=!state.emitter;rerender()});
   $("pauseBtn").addEventListener("click",()=>{state.paused=!state.paused;rerender()});
   $("resetBtn").addEventListener("click",()=>{
-    state.material="Water";state.wavelength=1450;state.speed=1;state.emitter=true;state.paused=false;state.phase=0;
-    $("wavelength").value=String(state.wavelength);$("speed").value=String(state.speed);
+    state.material="PP";state.band=125;state.speed=1;
+    state.emitter=true;state.paused=false;state.phase=0;
+    $("wavelength").value=String(state.band);$("speed").value=String(state.speed);
     rerender();
   });
   $("economy").addEventListener("change",e=>{
     state.economy=e.target.checked;
-    resizeCanvas(scene,ctx,W,H);resizeCanvas(spec,sctx,SW,SH);
-    rerender();
+    resizeCanvas(scene,ctx,W,H);resizeCanvas(spec,sctx,SW,SH);rerender();
   });
-
-  // ResizeObserver is cheaper than polling dimensions in the animation loop.
   let resizePending=false;
   const ro=new ResizeObserver(()=>{
     if(resizePending)return;
@@ -403,15 +394,14 @@ input[type="range"] { width:100%; accent-color:var(--accent); cursor:pointer; ma
   resizeCanvas(scene,ctx,W,H);resizeCanvas(spec,sctx,SW,SH);rerender();
 
   let lastDraw=0;
-  function frame(timestamp) {
+  function frame(timestamp){
     requestAnimationFrame(frame);
-    if(document.hidden || state.paused) {lastDraw=timestamp;return}
-    const fps=state.economy?20:30;
-    const minFrame=1000/fps;
+    if(document.hidden||state.paused){lastDraw=timestamp;return}
+    const fps=state.economy?20:30,minFrame=1000/fps;
     if(timestamp-lastDraw<minFrame)return;
     const dt=lastDraw?Math.min((timestamp-lastDraw)/1000,.08):minFrame/1000;
     lastDraw=timestamp;
-    if(state.emitter) state.phase+=dt*5.8*state.speed;
+    if(state.emitter)state.phase+=dt*5.8*state.speed;
     drawScene();
   }
   requestAnimationFrame(frame);
