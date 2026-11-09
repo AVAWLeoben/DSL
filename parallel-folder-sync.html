@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090e16">
-  <meta name="description" content="Preview and synchronize folders with bounded parallel copying, including YOLO label files and Windows SMB shares.">
+  <meta name="description" content="Copy and mirror folders in compatible Chromium browsers, with parallel operations and YOLO label filtering. No installation.">
   <title>Parallel Folder Sync · DSL Exercise Repository</title>
   <style>
     :root{color-scheme:dark;--bg:#090e16;--panel:#121b29;--panel2:#172337;--line:#2a3c50;--text:#eaf2fb;--muted:#a4b5c7;--blue:#5bd5f8;--mint:#6ae0bc;--warn:#ffd18b;--red:#ffb5b5}
@@ -13,14 +13,13 @@
     .container{width:min(1120px,calc(100% - 40px));margin-inline:auto}.header{border-bottom:1px solid #ffffff19;background:#0c1521bb;backdrop-filter:blur(12px)}.header-inner{min-height:78px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{font-size:16px;font-weight:780;letter-spacing:.02em}.brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:600}.nav{display:flex;align-items:center;gap:24px;color:var(--muted);font-size:13px}.nav a:hover{color:var(--blue)}
     .hero{padding:62px 0 33px}.eyebrow{color:var(--mint);font-size:12px;letter-spacing:.17em;text-transform:uppercase;font-weight:700}h1{font-size:clamp(35px,5vw,58px);line-height:1.09;letter-spacing:-.04em;margin:13px 0 16px}h1 em{color:var(--blue);font-style:normal}.intro{margin:0;color:var(--muted);font-size:16px;max-width:730px}
     .workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;padding:0 0 25px;align-items:start}.panel{border:1px solid var(--line);border-radius:17px;background:linear-gradient(155deg,#17263a,#111a28);padding:29px;min-width:0}.panel-head{display:flex;gap:12px;align-items:center;margin-bottom:23px;flex-wrap:wrap}.step{display:inline-grid;place-items:center;flex:0 0 auto;width:31px;height:31px;border:1px solid #3d7080;background:#184151;border-radius:9px;color:var(--mint);font-size:12px;font-weight:800}h2{font-size:19px;letter-spacing:-.02em;margin:0}h3{font-size:14px;margin:0 0 9px}
-    .mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:22px}.mode-button{min-height:83px;text-align:left;background:#0f1b2a;color:var(--text);border:1px solid #32485d;border-radius:11px;padding:13px;transition:background .16s,border-color .16s}.mode-button strong{display:block;font-size:13px}.mode-button small{display:block;margin-top:5px;color:var(--muted);font-size:11px;line-height:1.35}.mode-button[aria-pressed=true]{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);background:#173246}.mode-button:hover:not(:disabled){border-color:var(--blue)}
     .field-label{display:block;font-size:13px;font-weight:700;margin:0 0 8px}.field{width:100%;background:#0d1724;color:var(--text);border:1px solid #385268;border-radius:10px;padding:12px 14px;min-width:0}.field::placeholder{color:#8196aa}.field:focus{outline:2px solid var(--blue);outline-offset:2px}.field-group{margin-bottom:20px}.help{color:var(--muted);margin:8px 0 0;font-size:12px}.separator{border:0;border-top:1px solid var(--line);margin:21px 0}.input-row{display:flex;gap:9px;align-items:center}.input-row .field{flex:1}.picked{background:#0d1724;color:var(--muted);border:1px solid #385268;border-radius:10px;padding:13px;min-height:47px;overflow-wrap:anywhere;flex:1;font-size:12px}.secondary{display:inline-flex;gap:7px;justify-content:center;align-items:center;padding:12px 14px;border:1px solid #476e82;color:var(--text);background:#182d40;border-radius:10px;font-weight:700;font-size:13px;white-space:nowrap}.secondary:hover:not(:disabled){background:#224056;border-color:var(--blue)}.primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--blue);color:#08202a;border:1px solid var(--blue);border-radius:10px;font-weight:800;padding:12px 20px;transition:filter .16s}.primary:hover:not(:disabled){filter:brightness(1.1)}.danger{border-color:#a87272;color:#ffcece;background:#382530}.danger:hover:not(:disabled){background:#4c3039}.full{width:100%}.hidden{display:none!important}
     .status-strip{border:1px solid #385168;background:#102435;border-radius:11px;padding:11px 13px;color:var(--muted);font-size:12px;line-height:1.55;margin-bottom:20px}.status-strip strong{color:var(--text)}.status-dot{display:inline-block;width:8px;height:8px;border-radius:100%;background:var(--warn);margin-right:7px}.status-dot.on{background:var(--mint)}.status-dot.off{background:var(--red)}
     .range-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.range-top output{color:var(--mint);font-weight:800;font-variant-numeric:tabular-nums;font-size:16px}input[type=range]{width:100%;accent-color:#5bd5f8;cursor:pointer}.range-marks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.choice{display:flex;gap:9px;align-items:start;border:1px solid #385168;background:#111e2d;border-radius:10px;padding:11px;font-size:12px;cursor:pointer;min-width:0}.choice input{accent-color:var(--mint);margin-top:3px}.choice strong{display:block;color:var(--text);font-size:13px}.choice small{display:block;font-size:11px;color:var(--muted);line-height:1.3;margin-top:3px}.warning{padding:12px 14px;border:1px solid #8a6947;background:#332a21;color:#ffdeaa;font-size:12px;border-radius:10px;margin:13px 0 0}
     .preview-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.preview-top .panel-head{margin-bottom:16px}.ready{font-size:11px;font-weight:700;color:var(--mint);border:1px solid #366354;border-radius:99px;padding:5px 10px}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:8px 0 18px}.stat{background:#0c1927;border:1px solid #31485d;border-radius:11px;text-align:center;padding:16px 5px}.stat strong{display:block;font-size:25px;font-variant-numeric:tabular-nums;line-height:1.2}.stat span{display:block;color:var(--muted);font-size:11px;margin-top:5px}.stat.alert strong{color:var(--warn)}.subinfo{color:var(--muted);font-size:12px;margin:0 0 14px;line-height:1.5}.sample-list{list-style:none;margin:0;padding:0;max-height:132px;overflow:auto;font:11px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;color:#bbd4e8}.sample-list li{padding:3px 0;border-bottom:1px solid #ffffff12;overflow-wrap:anywhere}.empty-sample{color:var(--muted)}
     .progress-box{margin:19px 0 16px;padding-top:19px;border-top:1px solid var(--line)}.progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;margin:0 0 10px}.progress-top strong{color:var(--text)}progress{width:100%;height:12px;display:block;accent-color:var(--mint)}.progress-label{color:var(--muted);font-size:12px;margin:8px 0 0;min-height:19px}.actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:19px}.actions .primary{min-width:0}.confirm-row{display:flex;gap:10px;align-items:center;margin:15px 0 0}.confirm-row .field{max-width:180px}.message{min-height:21px;margin:12px 0 0;font-size:12px;color:var(--muted);overflow-wrap:anywhere}.message.error{color:var(--red)}.message.ok{color:var(--mint)}
     .privacy{display:flex;align-items:flex-start;gap:11px;color:var(--muted);font-size:12px;line-height:1.65;padding:18px 20px;border:1px solid #385168;border-radius:12px;background:#122333;margin-bottom:20px}.privacy strong{color:var(--text)}.privacy .symbol{color:var(--mint);font-size:17px;line-height:1}.guide{color:var(--muted);font-size:12px;line-height:1.8;margin-bottom:55px}.guide code{color:#cde9f6;background:#192b3b;border:1px solid #324b60;border-radius:5px;padding:2px 5px}.guide a{text-decoration:underline;text-decoration-color:#5bd5f8;color:var(--blue)}.footer{border-top:1px solid #ffffff17;padding:26px 0 38px;color:var(--muted);font-size:12px}.footer-inner{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-    @media(max-width:800px){.workspace{grid-template-columns:1fr}.hero{padding-top:42px}.panel{padding:23px}}@media(max-width:440px){.container{width:calc(100% - 28px)}.header-inner{align-items:flex-start;flex-direction:column;padding-block:17px;gap:11px}.nav{gap:14px}.mode-grid{grid-template-columns:1fr}.choices{grid-template-columns:1fr}.input-row{flex-wrap:wrap}.actions{grid-template-columns:1fr}.stats .stat strong{font-size:19px}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+    @media(max-width:800px){.workspace{grid-template-columns:1fr}.hero{padding-top:42px}.panel{padding:23px}}@media(max-width:440px){.container{width:calc(100% - 28px)}.header-inner{align-items:flex-start;flex-direction:column;padding-block:17px;gap:11px}.nav{gap:14px}.choices{grid-template-columns:1fr}.input-row{flex-wrap:wrap}.actions{grid-template-columns:1fr}.stats .stat strong{font-size:19px}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
   </style>
 </head>
 <body>
@@ -32,31 +31,23 @@
     <section class="hero" aria-labelledby="page-title">
       <div class="eyebrow">DSL · Browser-based utility</div>
       <h1 id="page-title">Parallel <em>folder sync.</em></h1>
-      <p class="intro">Move thousands of small files efficiently. Preview differences, synchronize with up to 64 concurrent copies, or mirror a directory with explicit deletion confirmation.</p>
+      <p class="intro">Copy thousands of small files with up to 32 concurrent operations. Preview changes, sync YOLO labels, or mirror a folder — directly in Chrome or Edge, with no installation.</p>
     </section>
     <div class="workspace">
       <section class="panel" aria-labelledby="setup-title">
-        <div class="panel-head"><span class="step">01</span><h2 id="setup-title">Choose folders &amp; copy engine</h2></div>
-        <div class="mode-grid" role="group" aria-label="Copy engine">
-          <button type="button" class="mode-button" id="mode-native" aria-pressed="true"><strong>Local helper · recommended</strong><small>Windows paths, NAS / SMB, Firefox, Safari, Chrome, Edge.</small></button>
-          <button type="button" class="mode-button" id="mode-browser" aria-pressed="false"><strong>Browser-only</strong><small>No installation; Chromium browsers with folder access support.</small></button>
-        </div>
-        <div class="status-strip" id="status-strip" role="status" aria-live="polite"><span class="status-dot" id="status-dot"></span><span id="connection-status">Checking local helper…</span></div>
-        <div id="native-inputs">
-          <div class="field-group"><label class="field-label" for="source-path">Source folder</label><input id="source-path" class="field" type="text" spellcheck="false" autocomplete="off" placeholder="D:\datasets\labels"/><p class="help">Paste a full local or UNC path (for example, <code>\\nas\datasets\labels</code>).</p></div>
-          <div class="field-group"><label class="field-label" for="target-path">Destination folder</label><input id="target-path" class="field" type="text" spellcheck="false" autocomplete="off" placeholder="\\nas\datasets\labels"/><p class="help">Both directories must already exist. Folder selection uses paths to support all browsers.</p></div>
-        </div>
-        <div id="browser-inputs" class="hidden">
+        <div class="panel-head"><span class="step">01</span><h2 id="setup-title">Choose your folders</h2></div>
+        <div class="status-strip" id="status-strip" role="status" aria-live="polite"><span class="status-dot" id="status-dot"></span><strong id="connection-status">Checking browser folder access…</strong><div class="help" id="browser-hint">Requires a Chromium-based browser with File System Access support, opened via HTTPS or localhost.</div></div>
+        <div id="browser-inputs">
           <div class="field-group"><span class="field-label">Source folder</span><div class="input-row"><div class="picked" id="browser-source">Not selected</div><button class="secondary" id="pick-source" type="button">Choose</button></div></div>
           <div class="field-group"><span class="field-label">Destination folder</span><div class="input-row"><div class="picked" id="browser-target">Not selected</div><button class="secondary" id="pick-target" type="button">Choose</button></div></div>
-          <p class="help">Your browser will request permission to read the source and write the destination.</p>
+          <p class="help">The browser asks you to grant read access to the source and write access to the destination. For network shares, choose an accessible mapped folder in the picker.</p>
         </div>
         <hr class="separator">
         <div class="field-group"><span class="field-label">Include files</span><div class="choices">
           <label class="choice"><input type="radio" name="filter" value="txt" checked><span><strong>YOLO labels (.txt)</strong><small>All .txt files recursively</small></span></label>
           <label class="choice"><input type="radio" name="filter" value="all"><span><strong>All files</strong><small>Copy all regular files</small></span></label>
         </div></div>
-        <div class="field-group"><div class="range-top"><label class="field-label" for="concurrency" style="margin:0">Concurrent copy operations</label><output id="threads-output" for="concurrency">16</output></div><input id="concurrency" type="range" min="1" max="64" step="1" value="16"><div class="range-marks"><span>1</span><span>16</span><span>32</span><span>64</span></div><p class="help">Try 8–32 for many small files. More operations are not always faster.</p></div>
+        <div class="field-group"><div class="range-top"><label class="field-label" for="concurrency" style="margin:0">Concurrent copy operations</label><output id="threads-output" for="concurrency">16</output></div><input id="concurrency" type="range" min="1" max="32" step="1" value="16"><div class="range-marks"><span>1</span><span>8</span><span>16</span><span>32</span></div><p class="help">Try 8–32 for many small files. More operations are not always faster.</p></div>
         <div class="field-group" style="margin-bottom:0"><span class="field-label">Synchronization mode</span><div class="choices">
           <label class="choice"><input type="radio" name="syncmode" value="sync" checked><span><strong>Incremental sync</strong><small>New or changed files only; never deletes</small></span></label>
           <label class="choice"><input type="radio" name="syncmode" value="mirror"><span><strong>Mirror</strong><small>Also delete extra destination files</small></span></label>
@@ -74,8 +65,8 @@
         <p class="message" id="message" role="status" aria-live="polite"></p>
       </section>
     </div>
-    <div class="privacy"><span class="symbol" aria-hidden="true">✓</span><div><strong>Local file processing.</strong> Files are never uploaded to this website. Browser-only mode uses your browser's folder permissions. Local-helper mode runs on <code>127.0.0.1</code>, sends paths and progress only to that helper, and copies files directly on your computer or accessible network shares. No third-party JavaScript libraries, compression, or Brotli decoding.</div></div>
-    <div class="guide"><strong>Cross-browser setup:</strong> Keep <code>parallel-folder-sync.html</code> at repository root and place the helper at <code>tools/fast-folder-sync-helper.cjs</code>. Install an up-to-date, security-patched Node.js, run <code>node tools/fast-folder-sync-helper.cjs</code> from the repository root, then open <a href="http://127.0.0.1:8765/" target="_blank" rel="noopener noreferrer">http://127.0.0.1:8765/</a> in any modern browser. The local helper is required for Firefox/Safari and recommended for SMB shares. <strong>Safety:</strong> use a non-administrator account, preview every mirror, and test on disposable folders first. No silent background service is installed.</div>
+    <div class="privacy"><span class="symbol" aria-hidden="true">✓</span><div><strong>Private, browser-only copying.</strong> Files stay on your computer or the storage locations you choose; no file contents are uploaded to this site. No account, installation, backend, or external JavaScript libraries are needed. The browser controls which folders can be accessed.</div></div>
+    <div class="guide"><strong>Browser requirement:</strong> Use a recent Chromium-based browser such as Google Chrome or Microsoft Edge with the File System Access API. Open this page over HTTPS (for example, GitHub Pages) or localhost. Firefox and Safari are not supported. <strong>Safety:</strong> Mirror deletes matching extra destination files after copying; always review the preview and test on disposable folders. The browser may not preserve original timestamps or Windows file permissions. A preview is not a snapshot: files can change after scanning.</div>
   </main>
   <footer class="footer"><div class="container footer-inner"><span>Exercise Repository · Teaching demonstrations</span><span>AVAW · Browser-based interactive labs</span></div></footer>
   <script>
@@ -83,206 +74,257 @@
     'use strict';
     const $ = id => document.getElementById(id);
     const pickSupported = typeof window.showDirectoryPicker === 'function' && window.isSecureContext;
-    const localHelperPage = location.hostname === '127.0.0.1' && location.port === '8765';
-    let mode = 'native', token = null, selectedSource = null, selectedTarget = null;
-    let plan = null, running = false, cancelled = false, runProgress = null;
+    let selectedSource = null, selectedTarget = null;
+    let plan = null, running = false, cancelled = false;
     const num = n => Number(n).toLocaleString();
-    const fmtBytes = b => b >= 1024*1024 ? (b/1048576).toFixed(1)+' MB' : b >= 1024 ? (b/1024).toFixed(1)+' KB' : b+' bytes';
+    const fmtBytes = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b >= 1024 ? (b / 1024).toFixed(1) + ' KB' : b + ' bytes';
     const choice = name => document.querySelector(`input[name="${name}"]:checked`).value;
-    function message(text, type='') { $('message').textContent=text; $('message').className='message '+type; }
-    function state(text) { $('state').textContent=text; }
-    function connection(ok, text) { $('status-dot').className='status-dot '+(ok?'on':'off'); $('connection-status').textContent=text; }
+    function message(text, type = '') { $('message').textContent = text; $('message').className = 'message ' + type; }
+    function state(text) { $('state').textContent = text; }
     function invalidate() {
       if (running) return;
-      plan = null; $('start').disabled = true; $('mirror-confirm').classList.add('hidden');
-      $('confirm').value=''; ['count-copy','count-skip','count-delete'].forEach(id => $(id).textContent='—');
-      $('sample-list').replaceChildren(); const li=document.createElement('li');li.textContent='Scan folders to preview changes.';li.className='empty-sample';$('sample-list').append(li);
-      $('preview-note').textContent='Select your folders, then scan to see exactly what will be copied or deleted.';
-      $('progress').value=0; $('progress').max=100; $('progress-stage').textContent='Waiting for preview';$('progress-count').textContent='0 / 0';$('progress-info').textContent='No files have been modified.';
+      plan = null;
+      $('start').disabled = true;
+      $('mirror-confirm').classList.add('hidden');
+      $('confirm').value = '';
+      for (const id of ['count-copy', 'count-skip', 'count-delete']) $(id).textContent = '—';
+      $('sample-list').replaceChildren();
+      const li = document.createElement('li');
+      li.className = 'empty-sample'; li.textContent = 'Scan folders to preview changes.';
+      $('sample-list').append(li);
+      $('preview-note').textContent = 'Select your folders, then scan to see what will be copied or deleted.';
+      $('progress').value = 0; $('progress').max = 100;
+      $('progress-stage').textContent = 'Waiting for preview';
+      $('progress-count').textContent = '0 / 0';
+      $('progress-info').textContent = 'No files have been modified.';
       state('Ready'); message('');
     }
-    function setMode(next) {
-      if (running || mode === next) return;
-      mode = next;
-      $('mode-native').setAttribute('aria-pressed',String(next==='native'));
-      $('mode-browser').setAttribute('aria-pressed',String(next==='browser'));
-      $('native-inputs').classList.toggle('hidden',next!=='native');
-      $('browser-inputs').classList.toggle('hidden',next!=='browser');
-      $('concurrency').max=next==='browser'?'32':'64';
-      if (+$('concurrency').value > +$('concurrency').max) $('concurrency').value=$('concurrency').max;
-      $('threads-output').textContent=$('concurrency').value;
-      if (next==='browser') connection(pickSupported,pickSupported?'Browser folder access available; no helper required.':'This browser does not expose writable directory access. Use the local helper.');
-      else connection(!!token,token?'Local helper connected.':'Helper not connected. Start it and open http://127.0.0.1:8765/');
-      invalidate();
-    }
-    async function discoverHelper() {
-      if (!localHelperPage) { connection(false,'Helper not connected. Start it and open http://127.0.0.1:8765/'); return; }
-      try {
-        const r=await fetch('/api/status',{cache:'no-store'});
-        const info=await r.json(); if (!r.ok || !info.helper || !info.token) throw new Error('Helper unavailable');
-        token=info.token; connection(true,`Local helper connected · Node ${info.node} · private localhost`);
-      } catch { connection(false,'Helper unavailable. Start it and reload this page.'); }
-    }
-    async function api(path, body={}) {
-      if (!token || !localHelperPage) throw new Error('The local helper is not connected. Run it and use http://127.0.0.1:8765/.');
-      const res=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-DSL-Token':token},body:JSON.stringify(body),cache:'no-store'});
-      const result=await res.json(); if(!res.ok) throw new Error(result.error||'Local helper error'); return result;
-    }
     function showPlan(data) {
-      $('count-copy').textContent=num(data.copy);$('count-skip').textContent=num(data.skip);$('count-delete').textContent=num(data.delete);
-      $('preview-note').textContent=`${num(data.files)} source files · ${fmtBytes(data.bytes)} to transfer · ${data.mirror?'mirror':'incremental sync'} · ${data.ignoredLinks||0} links/junctions ignored`;
+      $('count-copy').textContent = num(data.copy);
+      $('count-skip').textContent = num(data.skip);
+      $('count-delete').textContent = num(data.delete);
+      $('preview-note').textContent = `${num(data.files)} source files · ${fmtBytes(data.bytes)} to transfer · ${data.mirror ? 'mirror' : 'incremental sync'}`;
       $('sample-list').replaceChildren();
-      const items=[...(data.sampleCopy||[]).map(x=>'COPY  '+x),...(data.sampleDelete||[]).map(x=>'DELETE '+x)];
-      if (!items.length) items.push('Destination is already up to date.');
-      for (const s of items) { const li=document.createElement('li');li.textContent=s;$('sample-list').append(li); }
-      $('mirror-confirm').classList.toggle('hidden',!data.mirror || data.delete===0);
-      $('start').disabled=false;
-      $('progress').value=0;$('progress').max=Math.max(1,data.copy+data.delete);
-      $('progress-stage').textContent='Preview ready';$('progress-count').textContent=`0 / ${num(data.copy+data.delete)}`;
-      $('progress-info').textContent='No files modified. Review the preview before starting.';
-      state('Preview ready');message(data.delete?'Mirror preview includes deletions. Review carefully.':'Preview complete. Ready to copy.');
+      const samples = [
+        ...data.sampleCopy.map(x => 'COPY  ' + x),
+        ...data.sampleDelete.map(x => 'DELETE ' + x)
+      ];
+      if (!samples.length) samples.push('Destination is already up to date.');
+      for (const entry of samples) {
+        const li = document.createElement('li'); li.textContent = entry;
+        $('sample-list').append(li);
+      }
+      $('mirror-confirm').classList.toggle('hidden', !data.mirror || data.delete === 0);
+      $('start').disabled = false;
+      $('progress').value = 0;
+      $('progress').max = Math.max(1, data.copy + data.delete);
+      $('progress-stage').textContent = 'Preview ready';
+      $('progress-count').textContent = `0 / ${num(data.copy + data.delete)}`;
+      $('progress-info').textContent = 'No files modified. Review the preview before starting.';
+      state('Preview ready');
+      message(data.delete ? 'Mirror preview includes deletions. Review carefully.' : 'Preview complete. Ready to copy.');
     }
-    async function collect(handle, filter) {
-      const files = new Map(), stack=[{handle,prefix:''}];
-      while(stack.length) {
-        const dir=stack.pop();
-        for await(const [name, entry] of dir.handle.entries()) {
-          const rel=dir.prefix ? dir.prefix+'/'+name : name;
-          if(entry.kind==='directory') stack.push({handle:entry,prefix:rel});
-          else if(entry.kind==='file' && (filter==='all'||rel.toLowerCase().endsWith('.txt'))) files.set(rel,{rel,handle:entry,parent:dir.handle,name});
+    // Enumerate only files. Browser directory handles do not grant raw access to OS paths.
+    async function collect(root, filter) {
+      const files = new Map();
+      const stack = [{handle: root, prefix: ''}];
+      while (stack.length) {
+        const dir = stack.pop();
+        for await (const [name, entry] of dir.handle.entries()) {
+          const rel = dir.prefix ? dir.prefix + '/' + name : name;
+          if (entry.kind === 'directory') stack.push({handle: entry, prefix: rel});
+          else if (entry.kind === 'file' && (filter === 'all' || rel.toLowerCase().endsWith('.txt')))
+            files.set(rel, {rel, handle: entry, parent: dir.handle, name});
         }
       }
       return files;
     }
     async function parallelPool(items, concurrency, fn) {
-      let next=0;
-      await Promise.all(Array.from({length:Math.min(concurrency,items.length)},async()=>{
-        while(next<items.length) await fn(items[next++]);
+      let next = 0;
+      await Promise.all(Array.from({length: Math.min(concurrency, items.length)}, async () => {
+        while (next < items.length) await fn(items[next++]);
       }));
     }
+    // Browser writes cannot preserve original mtime, so compare bytes for small equal-size
+    // files when timestamps differ. This avoids recopies of small YOLO label files.
+    async function sameSmallFile(a, b) {
+      if (a.size !== b.size || a.size > 262144) return false;
+      const [ab, bb] = await Promise.all([a.arrayBuffer(), b.arrayBuffer()]);
+      const left = new Uint8Array(ab), right = new Uint8Array(bb);
+      for (let i = 0; i < left.length; i++) if (left[i] !== right[i]) return false;
+      return true;
+    }
     async function planBrowser() {
-      if (!pickSupported) throw new Error('Writable directory picking is unavailable in this browser. Use the local helper.');
+      if (!pickSupported) throw new Error('Use Chrome or Edge over HTTPS to access local folders.');
       if (!selectedSource || !selectedTarget) throw new Error('Choose both folders first.');
-      if (await selectedSource.isSameEntry(selectedTarget)) throw new Error('Source and destination cannot be the same folder.');
-      if (typeof selectedSource.resolve==='function') {
-        const nested1=await selectedSource.resolve(selectedTarget);
-        const nested2=await selectedTarget.resolve(selectedSource);
-        if (nested1 || nested2) throw new Error('Nested source/destination folders are not supported.');
+      if (await selectedSource.isSameEntry(selectedTarget)) throw new Error('Source and destination must be different folders.');
+      // Do not allow a parent folder to be synchronized into a child folder, or vice versa.
+      if (typeof selectedSource.resolve !== 'function' || typeof selectedTarget.resolve !== 'function')
+        throw new Error('This browser cannot check whether the selected folders are nested.');
+      const [insideSource, insideTarget] = await Promise.all([
+        selectedSource.resolve(selectedTarget), selectedTarget.resolve(selectedSource)
+      ]);
+      if (insideSource !== null || insideTarget !== null)
+        throw new Error('Nested source and destination folders are not supported.');
+      const filter = choice('filter'), mirror = choice('syncmode') === 'mirror';
+      const [src, dst] = await Promise.all([collect(selectedSource, filter), collect(selectedTarget, filter)]);
+      const copies = [], removals = [];
+      let skipped = 0, bytes = 0;
+      // Windows paths are case-insensitive; refuse ambiguous source trees instead
+      // of silently overwriting files with case-equivalent names.
+      const sourceNames = new Set();
+      for (const rel of src.keys()) {
+        const key = rel.toLocaleLowerCase('en-US');
+        if (sourceNames.has(key)) throw new Error('Two source files have the same case-insensitive path: ' + rel);
+        sourceNames.add(key);
       }
-      const filter=choice('filter'), mirror=choice('syncmode')==='mirror';
-      const [src,dst]=await Promise.all([collect(selectedSource,filter),collect(selectedTarget,filter)]);
-      const copies=[], removals=[], skip=[];let bytes=0;
-      const foldedSource=new Set([...src.keys()].map(name=>name.toLowerCase()));
-      await parallelPool([...src.values()],16,async item=>{
-        const sourceFile=await item.handle.getFile();
-        const existing=dst.get(item.rel);
-        const targetFile=existing ? await existing.handle.getFile() : null;
-        if(targetFile && sourceFile.size===targetFile.size && Math.abs(sourceFile.lastModified-targetFile.lastModified)<2000) skip.push(item.rel);
-        else {copies.push({...item,size:sourceFile.size});bytes+=sourceFile.size;}
+      await parallelPool([...src.values()], 16, async item => {
+        const from = await item.handle.getFile();
+        const old = dst.get(item.rel);
+        const to = old ? await old.handle.getFile() : null;
+        if (to && from.size === to.size &&
+            (from.size <= 262144 ? await sameSmallFile(from, to) : Math.abs(from.lastModified - to.lastModified) < 2000)) {
+          skipped++;
+        } else {
+          copies.push({...item, size: from.size}); bytes += from.size;
+        }
       });
-      if (mirror) for (const [rel,item] of dst) if (!src.has(rel) && !foldedSource.has(rel.toLowerCase())) removals.push(item);
-      copies.sort((a,b)=>a.rel.localeCompare(b.rel));removals.sort((a,b)=>a.rel.localeCompare(b.rel));
-      return {engine:'browser',copies,removals,data:{files:src.size,copy:copies.length,skip:skip.length,delete:removals.length,bytes,mirror,ignoredLinks:0,sampleCopy:copies.slice(0,6).map(x=>x.rel),sampleDelete:removals.slice(0,6).map(x=>x.rel)}};
+      if (mirror) {
+        const extraFiles = [];
+        for (const [rel, item] of dst) {
+          if (!src.has(rel) && !sourceNames.has(rel.toLocaleLowerCase('en-US'))) extraFiles.push(item);
+        }
+        await parallelPool(extraFiles, 16, async item => {
+          const oldFile = await item.handle.getFile();
+          removals.push({...item, oldSize: oldFile.size, oldModified: oldFile.lastModified});
+        });
+      }
+      copies.sort((a, b) => a.rel.localeCompare(b.rel));
+      removals.sort((a, b) => a.rel.localeCompare(b.rel));
+      const data = {files: src.size, copy: copies.length, skip: skipped, delete: removals.length,
+        bytes, mirror, sampleCopy: copies.slice(0, 6).map(x => x.rel),
+        sampleDelete: removals.slice(0, 6).map(x => x.rel)};
+      return {copies, removals, data};
     }
     async function preview() {
-      if(running) return;
-      $('preview').disabled=true; $('start').disabled=true;state('Scanning…');message('Reading folder entries and file metadata.');
-      try {
-        if(mode==='native') {
-          const data=await api('plan',{source:$('source-path').value,destination:$('target-path').value,threads:+$('concurrency').value,filter:choice('filter'),mirror:choice('syncmode')==='mirror'});
-          plan={engine:'native',planId:data.planId,data};
-        } else plan=await planBrowser();
-        showPlan(plan.data);
-      } catch(err) {invalidate();state('Error');message(err.message,'error');}
-      finally{$('preview').disabled=false;}
+      if (running) return;
+      $('preview').disabled = true; $('start').disabled = true;
+      state('Scanning…'); message('Reading file entries and metadata.');
+      try { plan = await planBrowser(); showPlan(plan.data); }
+      catch (err) { invalidate(); state('Error'); message(err.message, 'error'); }
+      finally { $('preview').disabled = !pickSupported; }
     }
     function showProgress(p) {
-      const done=(p.completed||0), total=p.totalOperations||0;
-      $('progress').max=Math.max(1,total);$('progress').value=Math.min(done,total);
-      $('progress-stage').textContent=({copying:'Copying files',deleting:'Deleting extras',completed:'Completed',cancelled:'Stopped','finished-with-errors':'Finished with errors'})[p.state] || p.state;
-      $('progress-count').textContent=`${num(done)} / ${num(total)}`;
-      $('progress-info').textContent=`${num(p.copied||0)} copied · ${num(p.skipped||0)} skipped · ${num(p.deleted||0)} deleted · ${num(p.failed||0)} failed`;
-      if(['completed','cancelled','finished-with-errors'].includes(p.state)) {
-        state(p.state==='completed'?'Done':p.state==='cancelled'?'Stopped':'Errors');
-        const failureText=p.errors?.length?' First error: '+p.errors[0].file+' — '+p.errors[0].message:'';
-        message(p.state==='completed'?'Sync complete. Re-scan to verify.':`Operation ${p.state}.`+failureText,p.failed?'error':p.state==='completed'?'ok':'');
+      const done = p.completed, total = p.totalOperations;
+      $('progress').max = Math.max(1, total); $('progress').value = Math.min(done, total);
+      $('progress-stage').textContent = ({copying: 'Copying files', deleting: 'Deleting extras',
+        completed: 'Completed', cancelled: 'Stopped', 'finished-with-errors': 'Finished with errors'})[p.state] || p.state;
+      $('progress-count').textContent = `${num(done)} / ${num(total)}`;
+      $('progress-info').textContent = `${num(p.copied)} copied · ${num(p.skipped)} skipped · ${num(p.deleted)} deleted · ${num(p.failed)} failed`;
+      if (['completed', 'cancelled', 'finished-with-errors'].includes(p.state)) {
+        state(p.state === 'completed' ? 'Done' : p.state === 'cancelled' ? 'Stopped' : 'Errors');
+        const firstError = p.errors.length ? ' First error: ' + p.errors[0].file + ' — ' + p.errors[0].message : '';
+        message(p.state === 'completed' ? 'Sync complete. Re-scan to verify.' : `Operation ${p.state}.` + firstError,
+          p.failed ? 'error' : p.state === 'completed' ? 'ok' : '');
       }
     }
-    async function getBrowserParent(root, rel) {
-      const parts=rel.split('/');parts.pop();let dir=root;
-      for(const part of parts) dir=await dir.getDirectoryHandle(part,{create:true});
+    async function getDestinationParent(root, rel) {
+      const parts = rel.split('/'); parts.pop();
+      let dir = root;
+      for (const part of parts) dir = await dir.getDirectoryHandle(part, {create: true});
       return dir;
     }
     async function runBrowser() {
-      const p={state:'copying',copied:0,skipped:plan.data.skip,deleted:0,failed:0,completed:0,totalOperations:plan.data.copy+plan.data.delete,errors:[]};
-      runProgress=p;showProgress(p);
-      const threads=+$('concurrency').value;
-      await parallelPool(plan.copies,threads,async item=>{
-        if(cancelled) return;
+      const p = {state: 'copying', copied: 0, skipped: plan.data.skip, deleted: 0,
+        failed: 0, completed: 0, totalOperations: plan.data.copy + plan.data.delete, errors: []};
+      showProgress(p);
+      const threads = +$('concurrency').value;
+      await parallelPool(plan.copies, threads, async item => {
+        if (cancelled) return;
         try {
-          const sourceFile=await item.handle.getFile();
-          const parent=await getBrowserParent(selectedTarget,item.rel);
-          const dest=await parent.getFileHandle(item.name,{create:true});
-          const stream=await dest.createWritable();
-          try { await sourceFile.stream().pipeTo(stream); } catch(err) { try{await stream.abort();}catch{} throw err; }
+          const file = await item.handle.getFile();
+          const parent = await getDestinationParent(selectedTarget, item.rel);
+          const destination = await parent.getFileHandle(item.name, {create: true});
+          const output = await destination.createWritable();
+          try { await file.stream().pipeTo(output); }
+          catch (err) { try { await output.abort(); } catch {} throw err; }
           p.copied++;
-        } catch(err) {p.failed++;if(p.errors.length<30)p.errors.push({file:item.rel,message:err.message});}
-        finally {p.completed++;showProgress(p);}
+        } catch (err) {
+          p.failed++;
+          if (p.errors.length < 30) p.errors.push({file: item.rel, message: err.message});
+        } finally { p.completed++; showProgress(p); }
       });
-      if(!cancelled && !p.failed && plan.data.mirror) {
-        p.state='deleting';showProgress(p);
-        for(const item of plan.removals) {
-          if(cancelled) break;
-          try{await item.parent.removeEntry(item.name);p.deleted++;}
-          catch(err){p.failed++;if(p.errors.length<30)p.errors.push({file:item.rel,message:err.message});}
-          finally{p.completed++;showProgress(p);}
+      if (!cancelled && !p.failed && plan.data.mirror) {
+        p.state = 'deleting'; showProgress(p);
+        for (const item of plan.removals) {
+          if (cancelled) break;
+          try {
+            const current = await item.handle.getFile();
+            if (current.size !== item.oldSize || current.lastModified !== item.oldModified)
+              throw new Error('Destination file changed after preview; not deleted');
+            await item.parent.removeEntry(item.name);
+            p.deleted++;
+          } catch (err) {
+            p.failed++;
+            if (p.errors.length < 30) p.errors.push({file: item.rel, message: err.message});
+          } finally { p.completed++; showProgress(p); }
         }
       }
-      p.state=cancelled?'cancelled':p.failed?'finished-with-errors':'completed';showProgress(p);
+      p.state = cancelled ? 'cancelled' : p.failed ? 'finished-with-errors' : 'completed';
+      showProgress(p);
     }
     async function start() {
-      if(!plan||running)return;
-      if(plan.data.mirror && plan.data.delete>0 && $('confirm').value!=='MIRROR'){message('Type MIRROR exactly to authorize destination deletions.','error');return;}
-      running=true;cancelled=false;
-      $('start').disabled=true;$('preview').disabled=true;$('cancel').disabled=false;
-      ['mode-native','mode-browser','pick-source','pick-target','source-path','target-path','concurrency'].forEach(id=>$(id).disabled=true);
-      document.querySelectorAll('input[name="filter"],input[name="syncmode"]').forEach(x=>x.disabled=true);
-      try {
-        if(plan.engine==='native') {
-          await api('start',{planId:plan.planId,confirm:plan.data.mirror?'MIRROR':''});
-          let info;
-          do {
-            await new Promise(resolve=>setTimeout(resolve,300));
-            info=await api('progress');showProgress(info);
-          } while(['copying','deleting'].includes(info.state));
-        } else await runBrowser();
-      } catch(err){state('Error');message(err.message,'error');}
+      if (!plan || running) return;
+      if (plan.data.mirror && plan.data.delete > 0 && $('confirm').value !== 'MIRROR') {
+        message('Type MIRROR exactly to authorize destination deletions.', 'error'); return;
+      }
+      running = true; cancelled = false;
+      $('start').disabled = true; $('preview').disabled = true; $('cancel').disabled = false;
+      for (const id of ['pick-source', 'pick-target', 'concurrency']) $(id).disabled = true;
+      document.querySelectorAll('input[name="filter"],input[name="syncmode"]').forEach(x => x.disabled = true);
+      try { await runBrowser(); }
+      catch (err) { state('Error'); message(err.message, 'error'); }
       finally {
-        running=false;plan=null;
-        $('preview').disabled=false;$('start').disabled=true;$('cancel').disabled=true;
-        ['mode-native','mode-browser','pick-source','pick-target','source-path','target-path','concurrency'].forEach(id=>$(id).disabled=false);
-        document.querySelectorAll('input[name="filter"],input[name="syncmode"]').forEach(x=>x.disabled=false);
+        running = false; plan = null;
+        $('preview').disabled = !pickSupported; $('start').disabled = true; $('cancel').disabled = true;
+        for (const id of ['pick-source', 'pick-target', 'concurrency']) $(id).disabled = !pickSupported && id.startsWith('pick-');
+        document.querySelectorAll('input[name="filter"],input[name="syncmode"]').forEach(x => x.disabled = false);
       }
     }
-    $('mode-native').addEventListener('click',()=>setMode('native'));
-    $('mode-browser').addEventListener('click',()=>setMode('browser'));
-    $('pick-source').addEventListener('click',async()=>{try{selectedSource=await showDirectoryPicker({id:'dsl-source',mode:'read'});$('browser-source').textContent=selectedSource.name;invalidate();}catch(err){if(err.name!=='AbortError')message(err.message,'error');}});
-    $('pick-target').addEventListener('click',async()=>{try{selectedTarget=await showDirectoryPicker({id:'dsl-target',mode:'readwrite'});$('browser-target').textContent=selectedTarget.name;invalidate();}catch(err){if(err.name!=='AbortError')message(err.message,'error');}});
-    $('source-path').addEventListener('input',invalidate);$('target-path').addEventListener('input',invalidate);
-    document.querySelectorAll('input[name="filter"],input[name="syncmode"]').forEach(x=>x.addEventListener('change',()=>{
-      $('mirror-warning').classList.toggle('hidden',choice('syncmode')!=='mirror');invalidate();
-    }));
-    $('concurrency').addEventListener('input',()=>{$('threads-output').textContent=$('concurrency').value;invalidate();});
-    $('preview').addEventListener('click',preview);
-    $('start').addEventListener('click',start);
-    $('cancel').addEventListener('click',async()=>{
-      cancelled=true;$('cancel').disabled=true;message('Stop requested; already running file operations may finish.');
-      if(mode==='native')try{await api('cancel');}catch(err){message(err.message,'error');}
+    $('pick-source').addEventListener('click', async () => {
+      try { selectedSource = await window.showDirectoryPicker({id: 'dsl-source', mode: 'read'});
+        $('browser-source').textContent = selectedSource.name; invalidate(); }
+      catch (err) { if (err.name !== 'AbortError') message(err.message, 'error'); }
     });
-    $('confirm').addEventListener('input',()=>message(''));
-    if(!pickSupported) { $('pick-source').disabled=true; $('pick-target').disabled=true; }
-    if(localHelperPage) document.querySelectorAll('.header a[href^="index.html"]').forEach(a => { a.href='https://github.com/AVAWLeoben/DSL'; });
-    discoverHelper();
+    $('pick-target').addEventListener('click', async () => {
+      try { selectedTarget = await window.showDirectoryPicker({id: 'dsl-target', mode: 'readwrite'});
+        $('browser-target').textContent = selectedTarget.name; invalidate(); }
+      catch (err) { if (err.name !== 'AbortError') message(err.message, 'error'); }
+    });
+    document.querySelectorAll('input[name="filter"], input[name="syncmode"]').forEach(x =>
+      x.addEventListener('change', () => {
+        $('mirror-warning').classList.toggle('hidden', choice('syncmode') !== 'mirror'); invalidate();
+      }));
+    $('concurrency').addEventListener('input', () => {
+      $('threads-output').textContent = $('concurrency').value; invalidate();
+    });
+    $('preview').addEventListener('click', preview);
+    $('start').addEventListener('click', start);
+    $('cancel').addEventListener('click', () => {
+      cancelled = true; $('cancel').disabled = true;
+      message('Stop requested. Already-running file operations may finish.');
+    });
+    $('confirm').addEventListener('input', () => message(''));
+    $('status-dot').className = 'status-dot ' + (pickSupported ? 'on' : 'off');
+    $('connection-status').textContent = pickSupported ? 'Browser folder access available' : 'Browser folder access unavailable';
+    $('browser-hint').textContent = pickSupported
+      ? 'No installation needed. Choose a source and destination to begin.'
+      : 'Use a recent Google Chrome or Microsoft Edge over HTTPS or localhost. Firefox and Safari are not supported.';
+    if (!pickSupported) {
+      $('pick-source').disabled = true; $('pick-target').disabled = true;
+      $('preview').disabled = true; state('Unsupported');
+      message('This browser cannot access writable folders. Open this page in Chrome or Edge.', 'error');
+    }
   })();
   </script>
 </body>
