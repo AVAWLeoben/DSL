@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Shadowmap · House scout</title>
+<link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+:root{--ink:#17211e;--muted:#69756f;--green:#245e48;--cream:#f5f4ee;--line:#e0e4dd;--glass:#fffF;--amber:#f2bb36}*{box-sizing:border-box}body{margin:0;background:#e8e9e4;color:var(--ink);font:14px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.map{position:fixed;inset:0;background:#dfe4df}.maplibregl-ctrl-bottom-right{right:12px;bottom:12px}.maplibregl-ctrl-attrib{font-size:10px}.top{position:fixed;z-index:5;top:16px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}.brand,.searchbox,.toolbox,.timeline,.hud{pointer-events:auto;background:var(--glass);backdrop-filter:blur(16px);border:1px solid #fff;border-radius:16px;box-shadow:0 10px 35px #182c1d22}.brand{padding:11px 15px;display:flex;gap:10px;align-items:center;font-size:14px;font-weight:750}.brand-icon{width:31px;height:31px;border-radius:10px;background:#e5efe4;color:var(--green);display:grid;place-items:center;font-size:20px}.brand small{display:block;font-size:10px;color:var(--muted);font-weight:500}.searchbox{display:flex;gap:7px;padding:7px;max-width:430px;width:min(44vw,430px)}input,button,select{font:inherit}.searchbox input{flex:1;min-width:0;border:0;background:transparent;outline:none;padding:8px 10px}.btn{border:0;border-radius:10px;background:var(--green);color:white;padding:9px 13px;font-weight:700;cursor:pointer}.btn.light{background:#eef3ed;color:var(--green)}.btn.icon{width:40px;height:40px;padding:0;display:grid;place-items:center;font-size:17px}.btn:hover{filter:brightness(.95)}.left{position:fixed;z-index:4;top:82px;left:18px;width:310px;max-height:calc(100vh - 250px);overflow:auto}.hud{padding:16px;margin-bottom:10px}.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.13em;color:var(--green);font-weight:800}.hud h1{font-size:20px;letter-spacing:-.04em;line-height:1.1;margin:5px 0 8px}.muted{color:var(--muted);font-size:12px}.place{font-size:12px;color:var(--muted);padding-top:9px;border-top:1px solid var(--line);margin-top:12px}.quick{display:flex;gap:7px;margin-top:13px}.quick .btn{flex:1;font-size:11px;padding:9px 6px}.toolbox{position:fixed;z-index:4;right:18px;top:50%;transform:translateY(-50%);padding:7px;display:grid;gap:6px}.timeline{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:18px;width:min(800px,calc(100vw - 370px));min-width:420px;padding:15px 18px}.timeline-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.moment{font-weight:750;font-size:14px}.moment span{color:var(--muted);font-weight:500;margin-left:6px}.playrow{display:flex;align-items:center;gap:11px}.playrow input{flex:1}.range{width:100%;accent-color:var(--green);cursor:pointer}.season{display:flex;justify-content:space-between;color:#89938d;font-size:10px;margin-top:-1px}.settings{position:fixed;z-index:5;right:18px;top:18px;width:300px;max-height:calc(100vh - 120px);overflow:auto;display:none}.settings.open{display:block}.settings .hud{margin:0}.setting-title{font-weight:750;margin:12px 0 5px}.split{display:flex;gap:10px}.split>*{flex:1;min-width:0}.field{margin:10px 0}.field label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px}.field select,.field input[type=number]{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:#fff}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.metric{border-radius:11px;background:#f3f6f1;padding:10px}.metric b{display:block;font-size:18px;letter-spacing:-.04em}.metric small{font-size:10px;color:var(--muted)}.notice{font-size:10px;line-height:1.5;color:var(--muted);margin:10px 0 0}.toast{position:fixed;z-index:7;left:50%;top:78px;transform:translateX(-50%);display:none;background:#17211e;color:#fff;padding:10px 15px;border-radius:10px;box-shadow:0 6px 20px #0003}.maplibregl-ctrl-group{border-radius:10px!important;overflow:hidden}@media(max-width:700px){.top{left:10px;right:10px;top:10px}.brand{padding:8px}.brand small{display:none}.searchbox{width:auto;flex:1;margin-left:8px}.left{top:76px;left:10px;width:min(260px,68vw);max-height:calc(100vh - 250px)}.hud{padding:12px}.hud h1{font-size:17px}.toolbox{right:10px}.timeline{min-width:0;width:calc(100vw - 20px);bottom:10px;padding:12px 14px}.settings{right:10px;top:64px;width:min(300px,calc(100vw - 20px))}.quick .btn{font-size:10px}}
+#map canvas.maplibregl-canvas{filter:brightness(.32) saturate(.4)}
+#nightVeil{position:fixed;inset:0;background:#071529;pointer-events:none;opacity:0;z-index:2}
+#sunBand{position:relative;height:9px;border-radius:9px;background:#c6c8cd;margin:8px 0}
+#dayCursor{position:absolute;top:-3px;bottom:-3px;width:3px;background:#151e22;border:1px solid white}
+
+.phoneBar,.phoneClose{display:none}
+@media(max-width:700px),(max-height:500px) and (pointer:coarse){
+  .phoneBar{position:fixed;z-index:8;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));display:flex;gap:4px;align-items:center;background:white;padding:4px;border-radius:14px;box-shadow:0 2px 12px #24352730}
+  .phoneBar b{margin-inline:8px auto}.phoneBar button,.phoneClose{min-height:44px;min-width:44px}
+  .top,.left,.toolbox,.settings,.settings.open{display:none}
+  .phonePanel .left,.phonePanel .top,.phonePanel .toolbox,.phonePanel #settings{position:static;transform:none;width:auto;max-height:none;overflow:visible}
+  #mobileSheet{position:fixed;inset:calc(max(8px,env(safe-area-inset-top)) + 58px) max(8px,env(safe-area-inset-right)) auto max(8px,env(safe-area-inset-left));z-index:7;background:#fff;border-radius:14px;max-height:calc(100dvh - 94px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;padding:10px}
+  #mobileSheet[hidden]{display:none}
+  .phonePanel .top,.phonePanel .left,.phonePanel .toolbox,.phonePanel #settings{display:block}
+  .phonePanel .brand,.phonePanel #settingsBtn{display:none}
+  .phonePanel .searchbox{width:100%;margin:0}.phonePanel .toolbox{display:flex}.phonePanel .btn,.phonePanel select{min-height:44px}.phonePanel input,.phonePanel select{font-size:16px}
+  .timeline{display:flex;flex-direction:column;position:fixed;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));width:auto;min-width:0;transform:none;max-height:43dvh;overflow:auto;padding:8px 14px;overscroll-behavior:contain}
+  .timeline>*{flex-shrink:0}.timeline .timeline-head,.timeline #timeRange,.timeline .season,.timeline #yearRange{order:-1}.timeline .timeline-head{margin:0!important}.timeline input[type=range]{min-height:32px;margin:0}.timeline #play{min-width:44px;min-height:44px}.timeline .season{font-size:9px}
+  .maplibregl-ctrl-bottom-right{bottom:43dvh;right:max(4px,env(safe-area-inset-right))}
+  @media(orientation:landscape){.timeline{left:auto;width:46vw;max-height:62dvh}.maplibregl-ctrl-bottom-right{left:max(8px,env(safe-area-inset-left));right:auto;bottom:8px}}
+}
+
+@media(max-width:700px),(max-height:500px) and (pointer:coarse){
+ .top{display:flex;position:fixed;z-index:9;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:auto}
+ .top .brand{display:none}.top .searchbox{margin:0;width:100%;max-width:none;padding:3px}.top input{font-size:16px;height:44px}.top button{min-height:44px}
+ .phoneBar{top:calc(max(8px,env(safe-area-inset-top)) + 54px)}
+ #mobileSheet{top:calc(max(8px,env(safe-area-inset-top)) + 110px);max-height:calc(100dvh - 136px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+ .timeline .lightReading{order:-2;padding-bottom:4px;border-bottom:1px solid #d4ded6;font-size:13px}
+ .timeline .lightReading strong{display:block;color:#325942;font-size:11px}
+}
+@media(max-height:500px) and (orientation:landscape) and (pointer:coarse){
+ .top{right:auto;width:45vw}.phoneBar{left:auto;top:max(8px,env(safe-area-inset-top))}
+ #mobileSheet{top:calc(max(8px,env(safe-area-inset-top)) + 56px);max-height:calc(100dvh - 80px)}
+}
+</style></head>
+<body><div class="phoneBar"><b>House scout</b><button class="btn light" data-panel="place">Place</button><button class="btn light" data-panel="tools">Tools</button><button class="btn light" data-panel="analysis">Analysis</button></div><div id="mobileSheet" class="phonePanel" hidden></div>
+<div id="map" class="map"></div><div id="nightVeil" aria-hidden="true"></div>
+<div class="top"><div class="brand"><span class="brand-icon">☼</span><div>Shadowmap<small>House scout · sun & shade</small></div></div><div class="searchbox"><input id="search" placeholder="Search an address or place"><button class="btn" id="searchBtn">Find</button></div></div>
+<section class="left"><div class="hud"><div class="eyebrow">Sunlight preview</div><h1 id="headline">See how the sun moves around a home</h1><div class="muted">Explore a location in 3D, compare the light through the day and across the year.</div><div class="place" id="place">47.438938, 15.019443 · Trofaiach valley reference</div><div class="quick"><button class="btn light" id="loadBtn">Refresh shadows</button><button class="btn light" id="locateBtn">My location</button></div></div><div class="hud"><label><input type="checkbox" id="treesOn" checked> Show trees and canopy shade</label><small id="treeStatus" class="place" style="display:block"></small><small>Fallbacks: tree 10 m tall, crown 6 m wide; woodland canopy 15 m. Shade assumes full foliage.</small> <button class="btn light" id="treesReload">Reload</button><div class="eyebrow">Selected surface</div><div class="muted" id="surfaceStatus">Click “Draw area” to outline a roof, garden, or façade.</div><div class="quick"><button class="btn light" id="drawBtn">＋ Draw area</button><button class="btn light" id="finishBtn" disabled>Finish</button></div></div></section>
+<nav class="toolbox"><button class="btn light icon" id="tiltUp" title="Tilt camera up">↗</button><button class="btn light icon" id="tiltDown" title="Tilt camera down">↘</button><button class="btn light icon" id="northBtn" title="Reset north">N</button><button class="btn light icon" id="terrainBtn" title="Toggle 3D terrain">⛰</button><button class="btn light icon" id="settingsBtn" title="Analysis settings">⚙</button></nav>
+<aside class="settings" id="settings"><div class="hud"><div class="eyebrow">Solar analysis</div><div class="setting-title">Selected period</div><div class="field"><label>Start month <b id="startLabel">Jan</b></label><input class="range" type="range" min="1" max="12" value="1" id="startMonth"></div><div class="field"><label>End month <b id="endLabel">Dec</b></label><input class="range" type="range" min="1" max="12" value="12" id="endMonth"></div><div class="setting-title">Surface orientation</div><div class="split"><div class="field"><label>Tilt <b><span id="tiltValue">30</span>°</b></label><input class="range" type="range" min="0" max="90" value="30" id="tilt"></div><div class="field"><label>Facing direction</label><select id="aspect"><option value="0">North</option><option value="45">NE</option><option value="90">East</option><option value="135">SE</option><option value="180" selected>South</option><option value="225">SW</option><option value="270">West</option><option value="315">NW</option></select></div></div><button class="btn" style="width:100%" id="analyzeBtn">Calculate estimate</button><div class="metrics"><div class="metric"><b id="irradiation">—</b><small>kWh/m² · period</small></div><div class="metric"><b id="sunHours">—</b><small>direct sun · h/day</small></div></div><div class="metric" style="margin-top:8px"><b id="sunPercent">—</b><small>daylight with direct sun on surface</small></div><p class="notice">Approximate clear-sky model, not local weather or a full 3D ray-tracing analysis. Heights and shade use available map data. Verify a property on site.</p></div></aside>
+<div class="timeline"><small style="align-self:flex-end;display:block;text-align:right;color:var(--muted);font-size:10px">For Entertainment Purposes Only</small><div class="muted">Night ▪ navy　 Ridge shade ▪ slate　 Direct sun ▪ gold</div><div id="sunBand"><i id="dayCursor"></i></div><div id="valleyHours" class="muted"></div><div class="lightReading"><strong>Garden light intensity</strong> <span id="twilightValue" hidden></span><span id="luxValue" role="status">Waiting for elevation and weather…</span></div><details id="luxPanel"><summary style="cursor:pointer;font-weight:650">Garden daylight · lux</summary><canvas hidden id="luxPlot" width="900" height="66" style="width:100%;height:44px" aria-label="Typical garden daylight and historical range"></canvas><small id="luxSource"></small><div class="muted">Horizontal outdoor surface. Seven dates around the selected day in each of five years. Approximate luminous efficacy: diffuse 120 and direct 95 lm/W. Uniform diffuse sky; terrain only. Twilight uses IALA G1038 Table 3 clear-weather levels, scaled by the terrain sky-view factor. Below −18° the curve shows only the zero solar baseline. Clouds during twilight, trees, reflections, moonlight and artificial light are omitted. Weather: Open-Meteo / ERA5.</div></details><div id="terrainStatus" class="muted" role="status"></div><div id="shadowStatus" class="muted" role="status">Loading building footprints…</div><div class="timeline-head"><div class="moment" id="moment">15:00 <span>Local solar time</span></div><button id="play" class="btn light" style="padding:7px 11px">▶</button></div><input id="timeRange" class="range" type="range" min="0" max="1430" step="10" value="900"><div class="season"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div><div class="timeline-head" style="margin:11px 0 3px"><div class="moment" style="font-size:11px">Time of year</div><div class="moment" style="font-size:11px" id="dateLabel"></div></div><input id="yearRange" class="range" type="range" min="0" max="364" step="1"><div class="season"><span>Winter</span><span>Spring</span><span>Summer</span><span>Autumn</span><span>Winter</span></div></div>
+<div id="toast" class="toast"></div>
+<script>
+(()=>{
+ const sheet=document.getElementById('mobileSheet');
+ const groups={place:['.left'],tools:['.toolbox'],analysis:['#settings']};
+ const slots=new Map();
+ let active='';
+ function closeSheet(){
+   for(const [node,slot] of slots) slot.after(node);
+   sheet.hidden=true;active='';
+   document.querySelectorAll('[data-panel]').forEach(b=>b.setAttribute('aria-expanded','false'));
+ }
+ for(const button of document.querySelectorAll('[data-panel]')){
+   button.setAttribute('aria-controls','mobileSheet');button.setAttribute('aria-expanded','false');
+   button.onclick=()=>{
+     const name=button.dataset.panel,wasOpen=active===name;
+     closeSheet();if(wasOpen)return;
+     for(const selector of groups[name]){
+       const node=document.querySelector(selector);
+       if(!slots.has(node)){const slot=document.createComment(selector);node.before(slot);slots.set(node,slot);}
+       sheet.append(node);
+     }
+     active=name;sheet.hidden=false;sheet.scrollTop=0;button.setAttribute('aria-expanded','true');
+   };
+ }
+ document.getElementById('map').addEventListener('pointerdown',closeSheet);
+ document.addEventListener('keydown',event=>{if(event.key==='Escape')closeSheet()});
+ document.getElementById('drawBtn').addEventListener('click',closeSheet);
+ matchMedia('(max-width:700px),(max-height:500px) and (pointer:coarse)').addEventListener('change',closeSheet);
+})();
+</script>
+<script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),q=new URLSearchParams(location.search),lat0=Number(q.get('lat'))||47.438938,lng0=Number(q.get('lng'))||15.019443;
+const instant=new Date(Number(q.get('time')) || 1795001242230);
+const dayNumber=(Date.UTC(instant.getUTCFullYear(),instant.getUTCMonth(),instant.getUTCDate())-Date.UTC(instant.getUTCFullYear(),0,0))/86400000;
+const B=2*Math.PI*(dayNumber-81)/364;
+const equation=9.87*Math.sin(2*B)-7.53*Math.cos(B)-1.5*Math.sin(B);
+const solarDate=new Date(instant.getTime()+(4*lng0+equation)*60000);
+$('timeRange').step=1;
+$('timeRange').max=1439;
+$('timeRange').value=solarDate.getUTCHours()*60+solarDate.getUTCMinutes();
+const today=new Date(solarDate.getUTCFullYear(),solarDate.getUTCMonth(),solarDate.getUTCDate(),12),year=today.getFullYear();$('yearRange').max=((new Date(year+1,0,1)-new Date(year,0,1))/86400000)-1;$('yearRange').value=Math.floor((today-new Date(year,0,1))/86400000);let date=new Date(year,today.getMonth(),today.getDate(),12),playing=false,timer=null,drawing=false,points=[],surface=null,buildings=[],toastTimer;
+const mapStatus = document.createElement('div');
+mapStatus.className = 'notice';
+mapStatus.setAttribute('role', 'status');
+$('place').after(mapStatus);
+mapStatus.textContent = 'Loading streets and buildings…';
+let map;
+try {
+map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[lng0,lat0],zoom:Number(q.get('zoom'))||18.23,pitch:Number(q.get('polar')??0.90037)*180/Math.PI,bearing:Number(q.get('azimuth')??2.72812)*180/Math.PI,antialias:!matchMedia("(pointer:coarse)").matches,pixelRatio:Math.min(devicePixelRatio,2)});
+} catch (error) {
+  $('luxValue').textContent='Light estimate unavailable · map could not start.';
+  mapStatus.textContent = 'The 3D map could not start. Open this HTML in a browser with WebGL and internet access.';
+  return;
+}
+map.on('error', event => {
+  if (!map.getSource('scout-shadows') || /openfreemap/i.test(event.error?.message || '')) {
+    mapStatus.textContent = 'Map data could not load. Check access to tiles.openfreemap.org and reload.';
+  }
+});
+map.on('idle', () => {
+  if (map.queryRenderedFeatures().some(feature => feature.sourceLayer)) mapStatus.textContent = '';
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');let terrainEnabled=true;
+let marker=null;
+const tell=msg=>{const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',3500)};
+function putSource(id,data){if(map.getSource(id))map.getSource(id).setData(data);else map.addSource(id,{type:'geojson',data});}
+const empty={type:'FeatureCollection',features:[]};
+map.on('load',()=>{
+ const demTiles=['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'];
+ map.addSource('scout-dem',{type:'raster-dem',tiles:demTiles,tileSize:256,maxzoom:15,encoding:'terrarium',attribution:'Terrain tiles: AWS Open Data / Tilezen'});
+ map.addSource('scout-hillshade-dem',{type:'raster-dem',tiles:demTiles,tileSize:256,maxzoom:15,encoding:'terrarium',attribution:'Terrain tiles: AWS Open Data / Tilezen'});
+ map.addLayer({id:'scout-terrain-hillshade',type:'hillshade',source:'scout-hillshade-dem',paint:{'hillshade-exaggeration':.32,'hillshade-shadow-color':'#69766f','hillshade-highlight-color':'#fffdf4','hillshade-illumination-direction':315}});
+ map.setTerrain({source:'scout-dem',exaggeration:1.05});
+ const footprintLayer = map.getStyle().layers.find(layer => layer['source-layer'] === 'building');
+ if (footprintLayer && !map.getStyle().layers.some(layer => layer.type === 'fill-extrusion' && layer['source-layer'] === 'building')) {
+   map.addLayer({
+     id: 'scout-3d-buildings', type: 'fill-extrusion',
+     source: footprintLayer.source, 'source-layer': 'building', minzoom: 13,
+     paint: {
+       'fill-extrusion-color': '#bdc9bb',
+       'fill-extrusion-height': ['to-number', ['get', 'render_height'], 9],
+       'fill-extrusion-base': ['to-number', ['get', 'render_min_height'], 0]
+     }
+   }, map.getStyle().layers.find(layer => layer.type === 'symbol')?.id);
+ }
+ const buildingLayers = map.getStyle().layers.filter(layer =>
+   layer['source-layer'] === 'building' && layer.type === 'fill-extrusion'
+ );
+ map.addSource('mountain-shade',{type:'geojson',data:empty});
+ map.addLayer({id:'mountain-shade',type:'fill',source:'mountain-shade',paint:{'fill-color':'#315389','fill-opacity':0.44,'fill-antialias':false}},buildingLayers[0]?.id);
+ const shadowAnchor = buildingLayers[0]?.id;
+ map.addSource('canopies',{type:'geojson',data:empty});
+ map.addSource('canopy-shade',{type:'geojson',data:empty});
+ map.addLayer({id:'tree-shadows',type:'fill',source:'canopy-shade',paint:{'fill-color':'#304e3f','fill-opacity':0.42,'fill-antialias':false}},shadowAnchor);
+ map.addLayer({id:'tree-crowns',type:'fill-extrusion',source:'canopies',paint:{'fill-extrusion-color':'#57815a','fill-extrusion-base':['get','base'],'fill-extrusion-height':['get','height'],'fill-extrusion-opacity':0.82}});
+ $('treesOn').onchange=syncCanopies;
+ $('treesReload').onclick=()=>loadVegetation(marker.getLngLat().toArray());
+ map.addSource('scout-shadows', {type: 'geojson', data: empty});
+ map.addLayer({
+   id: 'scout-shadow-fill', type: 'fill', source: 'scout-shadows',
+   paint: {'fill-color': '#26354a', 'fill-opacity': 0.52, 'fill-antialias': false}
+ }, shadowAnchor);
+
+ let dirty = true;
+ function refresh() {
+   if (!dirty) return;
+   dirty = false;
+   const visible = buildingLayers.length
+     ? map.queryRenderedFeatures({layers: buildingLayers.map(layer => layer.id)})
+     : [];
+   buildings = footprintsFromTiles(visible);
+   redraw();
+ }
+ map.on('moveend', () => { dirty = true; });
+ map.on('sourcedata', event => {
+   if (event.sourceId === footprintLayer?.source) dirty = true;
+ });
+ map.on('idle', refresh);
+ $('loadBtn').onclick = () => { dirty = true; refresh(); };
+ map.addSource('scout-surface',{type:'geojson',data:empty});map.addLayer({id:'scout-surface-fill',type:'fill',source:'scout-surface',paint:{'fill-color':'#48a77a','fill-opacity':.3}});map.addLayer({id:'scout-surface-line',type:'line',source:'scout-surface',paint:{'line-color':'#126344','line-width':2}});
+ map.addSource('scout-sunray',{type:'geojson',data:empty});map.addLayer({id:'scout-sunray-line',type:'line',source:'scout-sunray',paint:{'line-color':'#f0b52e','line-width':3,'line-dasharray':[2,2]}});
+ setHome([lng0,lat0],q.has('lat')?'Selected pin':'Trofaiach · reference pin');
+ redraw();
+});
+function setHome(ll,name){loadVegetation(ll);if(!surface) loadLandscape(ll);if(marker)marker.remove();const el=document.createElement('div');el.style.cssText='width:18px;height:18px;border-radius:50%;background:#277653;border:3px solid white;box-shadow:0 1px 8px #0006';marker=new maplibregl.Marker({element:el}).setLngLat(ll).addTo(map);$('place').textContent=`${ll[1].toFixed(6)}, ${ll[0].toFixed(6)} · ${name}`;}
+map.on('click',e=>{if(drawing){points.push([e.lngLat.lng,e.lngLat.lat]);drawPreview();}else{setHome([e.lngLat.lng,e.lngLat.lat],'Selected location');redraw();}});
+$('searchBtn').onclick=async()=>{const val=$('search').value.trim();if(!val)return;try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(val)}`);const a=await r.json();if(!a.length)throw Error('No matching address found.');const p=a[0],ll=[+p.lon,+p.lat];map.flyTo({center:ll,zoom:17,pitch:58,duration:1200});setHome(ll,p.name);redraw();}catch(e){tell(e.message||'Address search failed.');}};$('search').onkeydown=e=>{if(e.key==='Enter')$('searchBtn').click()};
+$('locateBtn').onclick=()=>navigator.geolocation?.getCurrentPosition(p=>{const ll=[p.coords.longitude,p.coords.latitude];map.flyTo({center:ll,zoom:17,pitch:58});setHome(ll,'Your location');redraw();},()=>tell('Location access was unavailable.'));
+$('tiltUp').onclick=()=>map.easeTo({pitch:Math.min(75,map.getPitch()+8)});$('tiltDown').onclick=()=>map.easeTo({pitch:Math.max(0,map.getPitch()-8)});$('northBtn').onclick=()=>map.easeTo({bearing:0,pitch:58});$('settingsBtn').onclick=()=>$('settings').classList.toggle('open');
+$('terrainBtn').onclick=()=>{terrainEnabled=!terrainEnabled;map.setTerrain(terrainEnabled?{source:'scout-dem',exaggeration:1.05}:null);$('terrainBtn').style.background=terrainEnabled?'#dcebe0':'#fff';tell(terrainEnabled?'3D terrain on':'3D terrain off');};
+$('drawBtn').onclick=()=>{drawing=true;points=[];surface=null;loadLandscape(target());putSource('scout-surface',empty);$('finishBtn').disabled=false;$('surfaceStatus').textContent='Click three or more corners on the map.';tell('Click around the roof or area to outline it.');};$('finishBtn').onclick=()=>{if(points.length<3){tell('Add at least three points.');return;}drawing=false;surface=points.slice();loadLandscape(target());putSource('scout-surface',polyFeature(surface));$('finishBtn').disabled=true;$('surfaceStatus').textContent=`Area outlined · ${surface.length} points · estimate at its centre.`;};
+function polyFeature(ring){const c=ring.concat([ring[0]]);return {type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Polygon',coordinates:[c]},properties:{}}]};}
+function drawPreview(){putSource('scout-surface',{type:'FeatureCollection',features:points.length>1?[{type:'Feature',geometry:{type:'LineString',coordinates:points},properties:{}}]:[]});}
+function syncDate(){date.setHours(12,0,0,0);$('dateLabel').textContent=date.toLocaleDateString(undefined,{month:'long',day:'numeric'});$('yearRange').value=Math.floor((date-new Date(date.getFullYear(),0,1))/86400000);}
+$('yearRange').oninput=()=>{const d=new Date(date.getFullYear(),0,1);d.setDate(d.getDate()+Number($('yearRange').value));date=d;syncDate();redraw();};
+$('timeRange').oninput=()=>{syncTime();redraw();};function syncTime(){const v=+$('timeRange').value;$('moment').innerHTML=`${String(Math.floor(v/60)).padStart(2,'0')}:${String(v%60).padStart(2,'0')} <span>Local solar time</span>`;}
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'❚❚':'▶';if(timer)clearInterval(timer);if(playing)timer=setInterval(()=>{let n=+$('timeRange').value+10;if(n>1430){n=0;let d=new Date(date);d.setDate(d.getDate()+1);if(d.getFullYear()!==date.getFullYear())d=new Date(date.getFullYear(),0,1);date=d;syncDate();}$('timeRange').value=n;syncTime();redraw();},180);};
+const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];function syncMonths(){if(+$('startMonth').value>+$('endMonth').value)$('endMonth').value=$('startMonth').value;$('startLabel').textContent=months[+$('startMonth').value-1];$('endLabel').textContent=months[+$('endMonth').value-1];}for(const id of ['startMonth','endMonth'])$(id).oninput=syncMonths;$('tilt').oninput=()=>$('tiltValue').textContent=$('tilt').value;
+function solar(at,d,h){const doy=Math.floor((d-new Date(d.getFullYear(),0,0))/86400000),g=2*Math.PI/365*(doy-1+(h-12)/24),decl=.006918-.399912*Math.cos(g)+.070257*Math.sin(g)-.006758*Math.cos(2*g)+.000907*Math.sin(2*g)-.002697*Math.cos(3*g)+.00148*Math.sin(3*g),ha=(h-12)*Math.PI/12,lat=at[1]*Math.PI/180,alt=Math.asin(Math.sin(lat)*Math.sin(decl)+Math.cos(lat)*Math.cos(decl)*Math.cos(ha)),az=Math.atan2(Math.sin(ha),Math.cos(ha)*Math.sin(lat)-Math.tan(decl)*Math.cos(lat))+Math.PI;return {alt,az};}
+function shadowPoly(b,sun){const pts=b.coords,mean=pts.reduce((a,p)=>a+p[1],0)/pts.length*Math.PI/180,len=Math.min(250,b.height/Math.tan(Math.max(sun.alt,.035))),n=len*Math.cos(sun.az+Math.PI)/111320,e=len*Math.sin(sun.az+Math.PI)/(111320*Math.cos(mean));let all=pts.flatMap(p=>[[p[0],p[1]],[p[0]+e,p[1]+n]]);return hull(all);}
+function hull(points){const p=points.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]),cross=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),lo=[],hi=[];for(const x of p){while(lo.length>1&&cross(lo.at(-2),lo.at(-1),x)<=0)lo.pop();lo.push(x);}for(let i=p.length-1;i>=0;i--){const x=p[i];while(hi.length>1&&cross(hi.at(-2),hi.at(-1),x)<=0)hi.pop();hi.push(x);}lo.pop();hi.pop();return lo.concat(hi);}
+function inside(pt,ring){let c=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++)if(((ring[i][1]>pt[1])!==(ring[j][1]>pt[1]))&&(pt[0]<(ring[j][0]-ring[i][0])*(pt[1]-ring[i][1])/(ring[j][1]-ring[i][1])+ring[i][0]))c=!c;return c;}
+function redraw(){if(!map.getSource('scout-shadows'))return;const d=date,h=+$('timeRange').value/60,center=marker?marker.getLngLat().toArray():[lng0,lat0],sun=solar(center,d,h);$('shadowStatus').textContent = sun.alt <= 0 ? 'Sun below the horizon' :
+    buildings.length ? buildings.length.toLocaleString() + ' visible building footprints casting shade' :
+    'Waiting for building footprints · zoom in if needed';
+drawMountainShade(solar(target(),date,h));
+drawTreeShade(sun);
+if(sun.alt<=0){putSource('scout-shadows',empty);putSource('scout-sunray',empty);return;}const dist=.0013,near=[center,[center[0]+Math.sin(sun.az)*dist,center[1]+Math.cos(sun.az)*dist]];putSource('scout-sunray',{type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'LineString',coordinates:near},properties:{}}]});const feats=[];for(const b of buildings){const ring=shadowPoly(b,sun);if(ring.length>=3)feats.push({type:'Feature',geometry:{type:'Polygon',coordinates:[[...ring,ring[0]]]},properties:{}});}putSource('scout-shadows',{type:'FeatureCollection',features:feats});}
+let daylightResult, daylightRequest, daylightDelay;
+const archiveCache = new Map();
+
+function resetDaylight() {
+  clearTimeout(daylightDelay);
+  daylightRequest?.abort();
+  daylightResult = null;
+  $('luxPlot').hidden = true;
+  $('luxValue').textContent = 'Waiting for terrain…';
+}
+
+async function calculateDaylight() {
+  if (!landscape) return;
+  const request = new AbortController();
+  daylightRequest?.abort();
+  daylightRequest = request;
+  const scene = landscape;
+  const selected = new Date(date);
+  const lastYear = Math.min(selected.getFullYear(), new Date().getFullYear()) - 1;
+  const samples = Array.from({length:144}, () => []);
+  const iso = value => new Date(value).toISOString().slice(0,10);
+  const month = selected.getMonth();
+  const day = selected.getDate();
+  const radians = Math.PI/180;
+  const {at,origin,horizon} = scene;
+  const sky = scene.sky;
+  const geometry = samples.map((_,i)=>{
+    const sun = solar(at,selected,i/6);
+    return {twilight:twilightLux(sun.alt*180/Math.PI,sky)??0,up:sun.alt>0,beam:sun.alt>horizon(...origin,sun.az)?Math.sin(sun.alt):0};
+  });
+  const doy = (Date.UTC(selected.getFullYear(),month,day)-Date.UTC(selected.getFullYear(),0,0))/86400000;
+  const angle = 2*Math.PI*(doy-81)/364;
+  const solarOffset = 4*at[0]+9.87*Math.sin(2*angle)-7.53*Math.cos(angle)-1.5*Math.sin(angle);
+  try {
+    for(let year=lastYear-4;year<=lastYear;year++) {
+      const midnight = Date.UTC(year,month,day);
+      const params = new URLSearchParams({latitude:at[1].toFixed(4),longitude:at[0].toFixed(4),
+        start_date:iso(midnight-4*86400000),end_date:iso(midnight+4*86400000),
+        hourly:'diffuse_radiation,direct_normal_irradiance',timezone:'GMT',models:'era5'});
+      const key = params.toString();
+      let data = archiveCache.get(key);
+      if (!data) {
+        const response = await fetch('https://archive-api.open-meteo.com/v1/archive?'+params,{signal:request.signal});
+        if(!response.ok) throw Error('Weather archive unavailable ('+response.status+')');
+        data = (await response.json()).hourly;
+        if(!data?.time?.length || !data.diffuse_radiation || !data.direct_normal_irradiance) throw Error('Incomplete weather record');
+        if(archiveCache.size>=50) archiveCache.delete(archiveCache.keys().next().value);
+        archiveCache.set(key,data);
+      }
+      const firstEnd = Date.parse(data.time[0]+'Z');
+      for(let offset=-3;offset<=3;offset++) {
+        geometry.forEach(({up,beam,twilight},i)=>{
+          // Archive values are means of the preceding hour. Sample the interval containing this instant.
+          const utc = midnight + offset*86400000 + (i*10-solarOffset)*60000;
+          const index = Math.floor((utc-firstEnd)/3600000)+1;
+          const diffuse = data.diffuse_radiation[index], direct = data.direct_normal_irradiance[index];
+          if(Number.isFinite(diffuse)&&Number.isFinite(direct))
+            samples[i].push(up? Math.max(0,diffuse)*120*sky + Math.max(0,direct)*95*beam : twilight);
+        });
+      }
+    }
+    if(request.signal.aborted || scene!==landscape) return;
+    if(samples.some(bin=>bin.length<28)) throw Error('Too few complete weather samples');
+    const curve=samples.map(bin=>{
+      bin.sort((a,b)=>a-b);
+      return [.1,.5,.9].map(q=>bin[Math.round((bin.length-1)*q)]);
+    });
+    daylightResult={curve,sky,years:(lastYear-4)+'–'+lastYear};
+    paintDaylight();
+  } catch(error) {
+    if(!request.signal.aborted) $('luxValue').textContent=error.message+' · reopen to retry';
+  }
+}
+
+// IALA G1038 (2016), Table 3. Log interpolation between clear-weather reference points.
+function twilightLux(degrees, sky) {
+  const anchors=[[-18,0.000651],[-12,0.00831],[-6,3.4],[-5,10.8],[-0.8,453],[-0.25,600],[0,732]];
+  if(degrees < -18 || degrees > 0) return null;
+  for(let i=1;i<anchors.length;i++){
+    const [start,low]=anchors[i-1], [end,high]=anchors[i];
+    if(degrees<=end) return sky*low*(high/low)**((degrees-start)/(end-start));
+  }
+}
+function showTwilight(degrees) {
+  const active=degrees<=0 && Boolean(landscape);
+  $('twilightValue').hidden=!active;
+  $('luxValue').hidden=active;
+  if(!active)return;
+  const lux=twilightLux(degrees,landscape.sky);
+  $('twilightValue').textContent=lux===null?'Night · moonlight and artificial light unmodeled':
+    '≈ '+Number(lux.toPrecision(2)).toLocaleString(undefined,{maximumSignificantDigits:2})+' lux · clear-sky twilight estimate';
+}
+function paintDaylight() {
+  if(!daylightResult) return;
+  const {curve,sky,years}=daylightResult;
+  const index=Math.min(143,Math.round(Number($('timeRange').value)/10));
+  const value=curve[index];
+  const fmt=n=>Math.round(n/10)*10;
+  $('luxValue').textContent=fmt(value[1]).toLocaleString()+' lux typical · '+fmt(value[0]).toLocaleString()+'–'+fmt(value[2]).toLocaleString()+' lux (10th–90th percentile)';
+  if (!$('luxPanel').open) return;
+  const canvas=$('luxPlot');
+  canvas.hidden=false;
+  const ctx=canvas.getContext('2d'),width=canvas.width,height=canvas.height;
+  const max=Math.max(1000,...curve.map(row=>row[2]));
+  const x=i=>i*width/143,y=n=>height-4-(height-9)*n/max;
+  ctx.clearRect(0,0,width,height);
+  ctx.beginPath();
+  curve.forEach((row,i)=>i?ctx.lineTo(x(i),y(row[2])):ctx.moveTo(x(i),y(row[2])));
+  for(let i=143;i>=0;i--) ctx.lineTo(x(i),y(curve[i][0]));
+  ctx.closePath();ctx.fillStyle='#e7d69e';ctx.fill();
+  ctx.beginPath();curve.forEach((row,i)=>i?ctx.lineTo(x(i),y(row[1])):ctx.moveTo(x(i),y(row[1])));
+  ctx.strokeStyle='#286846';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#28333b';ctx.fillRect(x(index),0,1.5,height);
+  $('luxSource').textContent='00–24 solar time · chart peak scale '+fmt(max).toLocaleString()+' lux · '+years+' · terrain sky-view factor '+Math.round(100*sky)+'%';
+}
+
+$('luxPanel').ontoggle=()=>{
+  if(daylightResult) paintDaylight();
+  if($('luxPanel').open && !daylightResult && landscape) {
+    clearTimeout(daylightDelay);
+    $('luxValue').textContent='Loading historical weather…';
+    calculateDaylight();
+  }
+};
+let landscape;
+let elevationRequest;
+const radius = 50000;
+const earthRadius = 6371000;
+
+async function loadLandscape(at) {
+  elevationRequest?.abort();
+  const request = new AbortController();
+  elevationRequest = request;
+  landscape = null;
+  showTwilight(1);
+  resetDaylight();
+  $('valleyHours').textContent='';
+  for (const id of ['irradiation','sunHours','sunPercent']) $(id).textContent = '—';
+  $('analyzeBtn').disabled = true;
+  putSource('mountain-shade', empty);
+  $('sunBand').style.background='';
+  $('terrainStatus').textContent = 'Loading the surrounding 50 km of elevation…';
+  try {
+    const latitude = at[1] * Math.PI / 180;
+    if (Math.abs(at[1]) > 83) throw Error('Outside terrain coverage');
+    const zoom = Math.max(3, Math.round(Math.log2(156543 * Math.cos(latitude) / 100)));
+    const world = 256 * 2 ** zoom;
+    const metres = 40075017 * Math.cos(latitude) / world;
+    const project = ([lon, lat]) => [
+      world * (lon + 180) / 360,
+      world * (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2
+    ];
+    const origin = project(at);
+    const tiles = new Map();
+    const jobs = [];
+    // Load finer samples within the valley and retain regional coverage for distant peaks.
+    for (const [level, extent] of [[zoom,radius+2200],[zoom+2,5500]]) {
+      const scale=2**(level-zoom);
+      const reach=Math.ceil(extent*scale/metres)+2;
+      const [cx,cy]=origin.map(pixel=>pixel*scale);
+      for(let x=Math.floor((cx-reach)/256);x<=Math.floor((cx+reach)/256);x++){
+        for(let y=Math.floor((cy-reach)/256);y<=Math.floor((cy+reach)/256);y++) jobs.push([x,y,level]);
+      }
+    }
+    async function worker() {
+      while (jobs.length) {
+        const [x,y,level] = jobs.pop();
+        const side = 2 ** level;
+        const url = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/' + [level,(x%side+side)%side,y].join('/') + '.png';
+        const response = await fetch(url,{signal:request.signal});
+        if (!response.ok) throw Error('Elevation tile unavailable');
+        const bitmap = await createImageBitmap(await response.blob(),{colorSpaceConversion:'none'});
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.drawImage(bitmap,0,0);
+        bitmap.close();
+        const bytes = context.getImageData(0,0,256,256).data;
+        const heights = new Float32Array(256*256);
+        for (let i=0;i<heights.length;i++) heights[i]=bytes[4*i]*256+bytes[4*i+1]+bytes[4*i+2]/256-32768;
+        tiles.set(level+','+x+','+y,heights);
+      }
+    }
+    await Promise.all(Array.from({length:5},worker));
+    if (request !== elevationRequest) return;
+    function height(x,y,fine) {
+      const scale=fine?4:1,level=fine?zoom+2:zoom;
+      // DEM values represent pixel centres. Interpolate across tile boundaries too.
+      const px=x*scale-0.5,py=y*scale-0.5,ix=Math.floor(px),iy=Math.floor(py);
+      const tileAt=(a,b)=>tiles.get(level+','+Math.floor(a/256)+','+Math.floor(b/256));
+      const tile=tileAt(ix,iy);
+      if(!tile)return NaN;
+      const i=((ix%256)+256)%256,j=((iy%256)+256)%256,k=j*256+i;
+      const nextX=i===255?tileAt(ix+1,iy):tile;
+      const nextY=j===255?tileAt(ix,iy+1):tile;
+      const corner=i===255&&j===255?tileAt(ix+1,iy+1):i===255?nextX:nextY;
+      const fx=px-ix,fy=py-iy;
+      return (1-fy)*((1-fx)*tile[k]+fx*nextX?.[j*256+(i+1)%256])+
+        fy*((1-fx)*nextY?.[((j+1)%256)*256+i]+fx*corner?.[((j+1)%256)*256+(i+1)%256]);
+    }
+    function horizon(x,y,azimuth) {
+      const ground=height(x,y,true);
+      const east=Math.sin(azimuth)/metres, south=-Math.cos(azimuth)/metres;
+      let slope=0;
+      for(let distance=metres/4;distance<=radius;distance+=distance<4000?metres/4:Math.max(metres,distance/180)) {
+        const ridge=height(x+distance*east,y+distance*south,distance<4000);
+        if (!Number.isFinite(ridge)) return NaN;
+        slope=Math.max(slope,(ridge-ground-distance*distance/(2*earthRadius))/distance);
+      }
+      return Math.atan(slope);
+    }
+    const sky=Array.from({length:180},(_,i)=>Math.cos(horizon(...origin,i*Math.PI/90))**2)
+      .reduce((sum,value)=>sum+value,0)/180;
+    landscape={at,origin,metres,horizon,sky};
+    $('analyzeBtn').disabled=false;
+    redraw();
+  } catch(error) {
+    if(request !== elevationRequest) return;
+    request.abort();
+    $('luxValue').textContent='Light estimate unavailable · elevation could not load.';
+    $('terrainStatus').textContent='Elevation unavailable. Select the property again to retry.';
+  }
+}
+
+function drawMountainShade(sun) {
+  const degrees=sun.alt*180/Math.PI;
+  showTwilight(degrees);
+  const ridge=landscape?.horizon(...landscape.origin,sun.az);
+  const hasBeam=degrees>0 && Number.isFinite(ridge) && sun.alt>ridge;
+  // Tone the map canvas, including the daylight-colored road and land-cover tiles.
+  // These are display exposure settings, independent of the weather-based lux estimate.
+  const fade=(angle,low,high)=>{
+    const t=Math.max(0,Math.min(1,(angle-low)/(high-low)));
+    return t*t*(3-2*t);
+  };
+  const twilight=fade(degrees,-12,0);
+  const daylight=fade(degrees,0,12);
+  const ridgeDegrees=Number.isFinite(ridge)?Math.max(0,ridge*180/Math.PI):0;
+  const direct=fade(degrees-ridgeDegrees,0,5);
+  const brightness=0.09+0.23*twilight+0.35*daylight+0.33*direct;
+  const saturation=0.18+0.22*twilight+0.35*daylight+0.25*direct;
+  map.getCanvas().style.filter='brightness('+brightness+') saturate('+saturation+')';
+  $('nightVeil').style.opacity=0.16*(1-daylight);
+  const azimuth=(sun.az*180/Math.PI+360)%360;
+  map.setLight({anchor:'map',position:[1.5,azimuth,90-Math.max(0,degrees)],
+    intensity:hasBeam?0.48:0.10,color:hasBeam?(degrees<12?'#ffdda2':'#fff6db'):'#c2d2e6'});
+  map.setPaintProperty('scout-terrain-hillshade','hillshade-illumination-anchor','map');
+  map.setPaintProperty('scout-terrain-hillshade','hillshade-illumination-direction',azimuth);
+  $('dayCursor').style.left=(Number($('timeRange').value)/1440*100)+'%';
+  if (!landscape) return;
+  const {at,origin,metres,horizon}=landscape;
+  const features=[];
+  const dayKey=date.toDateString();
+  if (landscape.dayKey!==dayKey) {
+    landscape.dayKey=dayKey;
+    resetDaylight();
+    {
+      $('luxValue').textContent='Loading historical weather…';
+      daylightDelay=setTimeout(calculateDaylight,600);
+    }
+    const intervals=[], bands=[];
+    let first=null;
+    let minutes=0;
+    const clock=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+    for(let m=0;m<=1440;m+=5) {
+      const position=solar(at,date,(m+2.5)/60);
+      const clear=m<1440 && position.alt>0 && position.alt>horizon(...origin,position.az);
+      if(m<1440) {
+        const color=position.alt<=0?'#22344c':clear?'#eeb947':'#8b98ab';
+        bands.push(color+' '+(m/14.4)+'% '+((m+5)/14.4)+'%');
+      }
+      if(clear) { if(first===null) first=m; minutes+=5; }
+      else if(first!==null) { intervals.push(clock(first)+'–'+clock(m)); first=null; }
+    }
+    $('sunBand').style.background='linear-gradient(90deg,'+bands.join(',')+')';
+    $('valleyHours').textContent='Terrain-only sun · '+(intervals.join(', ')||'none')+
+      ' · '+Math.floor(minutes/60)+'h '+minutes%60+'m total (solar time, 5-minute steps)';
+  }
+  paintDaylight();
+  const cell=125;
+  const ringPoint=(east,north)=>[at[0]+east/(111320*Math.cos(at[1]*Math.PI/180)),at[1]+north/111320];
+  if(sun.alt>0) {
+    // Interpolate the zero-clearance contour between sampled terrain horizons.
+    const grid=[];
+    for(let row=-9;row<=9;row++) {
+      const line=[];
+      for(let col=-9;col<=9;col++) {
+        const x=col*cell,y=row*cell;
+        line.push([x,y,horizon(origin[0]+x/metres,origin[1]-y/metres,sun.az)-sun.alt]);
+      }
+      grid.push(line);
+    }
+    function shadeTriangle(vertices) {
+      const ring=[];
+      vertices.forEach((a,i)=>{
+        const b=vertices[(i+1)%3];
+        if(a[2]>0) ring.push(ringPoint(a[0],a[1]));
+        if((a[2]>0)!==(b[2]>0)){
+          const t=a[2]/(a[2]-b[2]);
+          ring.push(ringPoint(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])));
+        }
+      });
+      if(ring.length>=3) features.push({type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[[...ring,ring[0]]]}});
+    }
+    for(let r=0;r<18;r++)for(let c=0;c<18;c++){
+      const a=grid[r][c],b=grid[r][c+1],d=grid[r+1][c],e=grid[r+1][c+1];
+      shadeTriangle([a,b,e]);shadeTriangle([a,e,d]);
+    }
+  }
+  putSource('mountain-shade',{type:'FeatureCollection',features});
+  const state=sun.alt<=0?(degrees>=-6?'Civil twilight':'Sun below horizon'):sun.alt<=ridge?'Direct sun blocked by terrain':'Sun clears the terrain';
+  $('terrainStatus').textContent=state+' · ridge '+(ridge*180/Math.PI).toFixed(1)+'° · blue areas show mountain shade within 1 km of selection';
+}
+
+let treeRequest;
+let canopyFeatures=[];
+const vegetationRadius=450;
+
+function mappedLength(value) {
+  const match=String(value??'').trim().match(/^(\d+(?:\.\d+)?)\s*(m|ft)?$/i);
+  if(!match)return null;
+  const metres=Number(match[1])*(match[2]?.toLowerCase()==='ft'?0.3048:1);
+  return metres>0 && metres<=120 ? metres : null;
+}
+
+async function loadVegetation([longitude,latitude]) {
+  treeRequest?.abort();
+  const request=new AbortController();
+  treeRequest=request;
+  canopyFeatures=[];
+  putSource('canopies',empty);
+  putSource('canopy-shade',empty);
+  $('treeStatus').textContent='Loading mapped vegetation…';
+  const around='(around:'+vegetationRadius+','+latitude+','+longitude+')';
+  const query='[out:json][timeout:18];(node[natural=tree]'+around+';way[natural=wood]'+around+';way[landuse=forest]'+around+';);out geom;';
+  try{
+    const response=await fetch('https://overpass-api.de/api/interpreter',{
+      method:'POST',body:new URLSearchParams({data:query}),signal:request.signal
+    });
+    if(!response.ok)throw Error();
+    const result=await response.json();
+    if(result.remark||!Array.isArray(result.elements))throw Error();
+    if(request!==treeRequest)return;
+    let trees=0,woods=0,taggedHeight=0,taggedWidth=0;
+    for(const element of result.elements){
+      const height=mappedLength(element.tags?.height);
+      const width=mappedLength(element.tags?.diameter_crown);
+      let ring;
+      if(element.type==='node'){
+        trees++;
+        if(width)taggedWidth++;
+        const radius=(width??6)/2;
+        ring=Array.from({length:16},(_,i)=>{
+          const angle=i*Math.PI/8;
+          return [element.lon+radius*Math.cos(angle)/(111320*Math.cos(element.lat*Math.PI/180)),
+                  element.lat+radius*Math.sin(angle)/111320];
+        });
+        ring.push(ring[0]);
+      }else{
+        ring=element.geometry?.map(p=>[p.lon,p.lat]);
+        if(!ring||ring.length<4||ring[0][0]!==ring.at(-1)[0]||ring[0][1]!==ring.at(-1)[1])continue;
+        woods++;
+      }
+      if(height)taggedHeight++;
+      const top=height??(element.type==='node'?10:15);
+      canopyFeatures.push({type:'Feature',geometry:{type:'Polygon',coordinates:[ring]},
+        properties:{height:top,base:top*0.35}});
+    }
+    $('treeStatus').textContent=trees+' trees · '+woods+' woodland outlines · '+taggedHeight+' tagged heights · '+taggedWidth+' tagged crown widths. Within 450 m; coverage varies.';
+    syncCanopies();
+  }catch(error){
+    if(request===treeRequest) $('treeStatus').textContent='Vegetation data unavailable. Tap Reload to retry.';
+  }
+}
+
+function syncCanopies(){
+  putSource('canopies',{type:'FeatureCollection',features:$('treesOn').checked?canopyFeatures:[]});
+  redraw();
+}
+
+function drawTreeShade(sun){
+  const features=[];
+  if(sun.alt>0 && $('treesOn').checked){
+    for(const feature of canopyFeatures){
+      const ring=feature.geometry.coordinates[0];
+      const shift=Math.min(250,feature.properties.height/Math.tan(sun.alt));
+      const dx=-shift*Math.sin(sun.az)/(111320*Math.cos(ring[0][1]*Math.PI/180));
+      const dy=-shift*Math.cos(sun.az)/111320;
+      const offset=(p,f)=>[p[0]+dx*f,p[1]+dy*f];
+      const add=outline=>features.push({type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[outline]}});
+      const top=ring.map(p=>offset(p,1)),base=ring.map(p=>offset(p,.35));
+      add(top);
+      for(let i=1;i<ring.length;i++)add([base[i-1],base[i],top[i],top[i-1],base[i-1]]);
+    }
+  }
+  putSource('canopy-shade',{type:'FeatureCollection',features});
+}
+
+function footprintsFromTiles(features) {
+  const buildings = [];
+  for (const feature of features) {
+    const geometry = feature.geometry;
+    const polygons = geometry.type === 'MultiPolygon' ? geometry.coordinates :
+      geometry.type === 'Polygon' ? [geometry.coordinates] : [];
+    const properties = feature.properties || {};
+    const height = Number(properties.render_height) || Number(properties.height) || 9;
+    for (const [outline] of polygons) {
+      if (outline?.length >= 4 && height > 0) buildings.push({coords: outline, height});
+    }
+  }
+  return buildings;
+}
+function target(){if(surface?.length)return [surface.reduce((s,p)=>s+p[0],0)/surface.length,surface.reduce((s,p)=>s+p[1],0)/surface.length];return marker?marker.getLngLat().toArray():[lng0,lat0];}
+function analyze(){if(!landscape){tell('Select the property and wait for elevation data.');return;}const at=target(),tilt=+$('tilt').value*Math.PI/180,face=+$('aspect').value*Math.PI/180,norm=[Math.sin(tilt)*Math.sin(face),Math.sin(tilt)*Math.cos(face),Math.cos(tilt)];let energy=0,hours=0,daylight=0,days=0;for(let m=+$('startMonth').value;m<=+$('endMonth').value;m++){const d=new Date(date.getFullYear(),m-1,15),nd=new Date(d.getFullYear(),m,0).getDate();let daily=0,sh=0,dh=0;for(let hr=0.5;hr<24;hr++){const s=solar(at,d,hr);if(s.alt<=0)continue;dh++;const sv=[Math.cos(s.alt)*Math.sin(s.az),Math.cos(s.alt)*Math.cos(s.az),Math.sin(s.alt)],inc=Math.max(0,norm[0]*sv[0]+norm[1]*sv[1]+norm[2]*sv[2]),shade=s.alt<=landscape.horizon(...landscape.origin,s.az)||buildings.some(b=>inside(at,shadowPoly(b,s)));if(inc>0&&!shade)sh++;daily+=((shade?0:700*Math.pow(Math.sin(s.alt),.2)*inc)+60*(1+Math.cos(tilt))/2)/1000;}energy+=daily*nd;hours+=sh*nd;daylight+=dh*nd;days+=nd;}$('irradiation').textContent=energy.toFixed(0);$('sunHours').textContent=(hours/days).toFixed(1);$('sunPercent').textContent=`${daylight?Math.round(100*hours/daylight):0}%`;tell(surface?'Estimate calculated at the outlined surface centre.':'Estimate calculated at the selected location.');}
+$('analyzeBtn').onclick=analyze;syncDate();syncTime();syncMonths();
+})();
+</script></body></html>
